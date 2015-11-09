@@ -26,6 +26,8 @@ nchnls = 2
 giBaseFreq = 32
 giThreshold = 0.25
 
+seed 0
+
 ;; Channels
 chn_k "b1",3
 chn_k "b2",3
@@ -84,7 +86,46 @@ instr blower
 	aout = asig* aenv 
 	outs aout, aout
 endin	
+
+;schedule "bellCascade",0,0,10
+instr bellCascade
+	icount = p4
+	imininterval = 0.05
+	imaxinterval = 0.25
+	; TODO: pan somewhere
+	index = 0
+	iharmonic random 40,80 ; from basenote giBas
+	istartTime = 0
+	ipan random 0,1
+loop2:
+	iharmonic -= int(random:i(1,4)) ; lower harmoniv with every time, but with random intervals
+	ifreq = giBaseFreq * iharmonic
+	iduration random 1.5,3
+	
+	schedule "bell",istartTime,iduration, ifreq, ipan
+	istartTime += random:i(imininterval,imaxinterval)
+	loop_lt index,1,icount,loop2 
+	 
 		
+endin
+		
+; schedule "bell",0,2,548, 1.25, 0.75
+instr bell
+	iamp random 0.02,0.005
+	aenv linen iamp,0.01,p3,p3/2
+	ivibrdepth random 0.005,0.01
+	ivibrrate random 2,6
+	ifreq = p4
+	ipan = p5
+	ic1 random 0.5,1
+	ic2 random 0.5,1
+	;print ic1, ic2, ivibrdepth, ivibrrate
+	asig fmbell 1, ifreq, ic1, ic2, ivibrdepth, ivibrrate, -1, -1, -1, -1, -1
+	asig butterlp asig, random:i(1000,2000)
+	aout = asig *aenv
+	aL, aR pan2 aout, ipan
+	outs aL, aR
+endin
 
 </CsInstruments>
 <CsScore>
@@ -97,8 +138,8 @@ endin
  <objectName/>
  <x>0</x>
  <y>0</y>
- <width>158</width>
- <height>183</height>
+ <width>357</width>
+ <height>431</height>
  <visible>true</visible>
  <uuid/>
  <bgcolor mode="nobackground">
@@ -118,7 +159,7 @@ endin
   <midicc>0</midicc>
   <minimum>-1.00000000</minimum>
   <maximum>1.00000000</maximum>
-  <value>-0.32000000</value>
+  <value>0.46000000</value>
   <mode>lin</mode>
   <mouseControl act="jump">continuous</mouseControl>
   <resolution>-1.00000000</resolution>
@@ -136,7 +177,7 @@ endin
   <midicc>0</midicc>
   <minimum>-1.00000000</minimum>
   <maximum>1.00000000</maximum>
-  <value>-0.30000000</value>
+  <value>0.04000000</value>
   <mode>lin</mode>
   <mouseControl act="jump">continuous</mouseControl>
   <resolution>-1.00000000</resolution>
@@ -154,7 +195,7 @@ endin
   <midicc>0</midicc>
   <minimum>-1.00000000</minimum>
   <maximum>1.00000000</maximum>
-  <value>-0.44000000</value>
+  <value>-0.52000000</value>
   <mode>lin</mode>
   <mouseControl act="jump">continuous</mouseControl>
   <resolution>-1.00000000</resolution>
@@ -172,7 +213,7 @@ endin
   <midicc>0</midicc>
   <minimum>-1.00000000</minimum>
   <maximum>1.00000000</maximum>
-  <value>-0.90000000</value>
+  <value>-0.22000000</value>
   <mode>lin</mode>
   <mouseControl act="jump">continuous</mouseControl>
   <resolution>-1.00000000</resolution>
@@ -190,7 +231,7 @@ endin
   <midicc>0</midicc>
   <minimum>-1.00000000</minimum>
   <maximum>1.00000000</maximum>
-  <value>-0.60000000</value>
+  <value>-0.08000000</value>
   <mode>lin</mode>
   <mouseControl act="jump">continuous</mouseControl>
   <resolution>-1.00000000</resolution>
@@ -208,7 +249,7 @@ endin
   <midicc>0</midicc>
   <minimum>-1.00000000</minimum>
   <maximum>1.00000000</maximum>
-  <value>0.78000000</value>
+  <value>0.16000000</value>
   <mode>lin</mode>
   <mouseControl act="jump">continuous</mouseControl>
   <resolution>-1.00000000</resolution>
@@ -231,6 +272,25 @@ endin
   <dispx>1.00000000</dispx>
   <dispy>1.00000000</dispy>
   <mode>0.00000000</mode>
+ </bsbObject>
+ <bsbObject type="BSBButton" version="2">
+  <objectName>button7</objectName>
+  <x>8</x>
+  <y>223</y>
+  <width>100</width>
+  <height>30</height>
+  <uuid>{b3670a8b-0892-4cf2-bfe8-f520edf34312}</uuid>
+  <visible>true</visible>
+  <midichan>0</midichan>
+  <midicc>0</midicc>
+  <type>event</type>
+  <pressedValue>1.00000000</pressedValue>
+  <stringvalue/>
+  <text>Bells</text>
+  <image>/</image>
+  <eventLine>i "bellCascade" 0 0 10</eventLine>
+  <latch>false</latch>
+  <latched>true</latched>
  </bsbObject>
 </bsbPanel>
 <bsbPresets>
