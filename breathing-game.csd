@@ -19,8 +19,8 @@ nchnls = 2
 0dbfs = 1
 
 ;; Constants
-#define IN #0#
-#define OUT #1#
+#define IN #1#
+#define OUT #-1#
 
 ;; Globals
 giBaseFreq = 32
@@ -35,6 +35,12 @@ chn_k "b3",3
 chn_k "b4",3
 chn_k "b5",3
 chn_k "b6",3
+
+chn_k "accX1",1
+chn_k "accY1",1
+chn_k "speed1",1
+
+chnset 0.2, "speed1"
 
 gSbreather[] fillarray "b1", "b2", "b3", "b4", "b5", "b6"
 gkBreath[] init 7
@@ -62,9 +68,9 @@ instr blowReader
 	
 endin
 
-instr blower
+instr blower,10
 	inumber = p4 ; 3 pairs, first pair 1,2, second 3, 4 etc one pair has close
-	inOut = p5 ; 0 - in 1 - ou
+	inOut = p5 ; 0 - in 1 - out
 	; TODO: kui puhub kõvemini, siis mine järgmise osaheli peale (paarituarvulised?)
 	ifreq = giBaseFreq * (1+ceil(inumber/2)) ; should be as 2. 3. and 4. harmonic from giBaseFreq
 	
@@ -88,7 +94,7 @@ instr blower
 endin	
 
 ;schedule "bellCascade",0,0,10
-instr bellCascade
+instr bellCascade, 20
 	icount = p4
 	imininterval = 0.05
 	imaxinterval = 0.25
@@ -127,11 +133,60 @@ instr bell
 	outs aL, aR
 endin
 
+;schedule 30.1, 0, -1, 1, 1
+;schedule 30.1, 0, -1, 1, -1
+;schedule -30.1, 0, 0, 1, 0
+
+instr breathing, 30
+	iplayer = p4 ; 
+	inOut = p5 ; in  1, out -1
+	SaccY sprintf "accY%d",iplayer
+	SaccX sprintf "accX%d",iplayer
+	Speed sprintf "speed%d",iplayer
+	ky chnget SaccY ; vertical accelometer from the phone
+	kx chnget SaccX
+	kspeed chnget Speed ; is it needed after all? intensity? 
+	ifreq random 300,400  ;init (inOut==$IN) ? random:i(300,400) : random:i(400,500)
+	iband init 100  ; (inOut==$IN) ? random:i(40,50) : random:i(10,20)
+	print ifreq, iband
+	; võibolla siiski lubada negatiivne ky - alla liikudes läheb igal juhul madalamaks?
+	kfreq =  ifreq + ifreq*ky/2 ;*inOut ; inout negative if breathing out 
+	kband = iband - iband*ky*0.9 ; if inhaling, band narrower
+	printk2 kband
+	
+	kamp  = 0.1 ;+ ky ;* (1 + abs(kspeed))
+	aenv linenr kamp, 0.3, 0.5,0.001	
+	; TODO: port!
+	
+	
+;	if (inOut==$IN) then
+		
+;		kfreq line random:i(300,400),p3,random:i(400,500)
+;		kband line 40,p3,10
+;		aenv expsegr 0.0001, 0.5, 0.05, 4,1,1,0.001
+;	else
+;		kfreq line random:i(400,500),p3,random:i(300,400)
+;		kband line 10,p3,40
+;		aenv linsegr 0.0001, 1, 0.5, 2,0.001
+;	endif
+	iamp = 4 ; amp sõltuvusse kiirendusest
+	
+	asig butterbp pinkish(iamp),kfreq, kband
+	aout = asig*aenv
+	outs aout, aout	
+	
+endin
+
+
+
+
 </CsInstruments>
 <CsScore>
 
 </CsScore>
 </CsoundSynthesizer>
+
+
 
 <bsbPanel>
  <label>Widgets</label>
@@ -159,7 +214,7 @@ endin
   <midicc>0</midicc>
   <minimum>-1.00000000</minimum>
   <maximum>1.00000000</maximum>
-  <value>0.46000000</value>
+  <value>-0.04000000</value>
   <mode>lin</mode>
   <mouseControl act="jump">continuous</mouseControl>
   <resolution>-1.00000000</resolution>
@@ -177,7 +232,7 @@ endin
   <midicc>0</midicc>
   <minimum>-1.00000000</minimum>
   <maximum>1.00000000</maximum>
-  <value>0.04000000</value>
+  <value>-0.02000000</value>
   <mode>lin</mode>
   <mouseControl act="jump">continuous</mouseControl>
   <resolution>-1.00000000</resolution>
@@ -195,7 +250,7 @@ endin
   <midicc>0</midicc>
   <minimum>-1.00000000</minimum>
   <maximum>1.00000000</maximum>
-  <value>-0.52000000</value>
+  <value>-0.02000000</value>
   <mode>lin</mode>
   <mouseControl act="jump">continuous</mouseControl>
   <resolution>-1.00000000</resolution>
@@ -213,7 +268,7 @@ endin
   <midicc>0</midicc>
   <minimum>-1.00000000</minimum>
   <maximum>1.00000000</maximum>
-  <value>-0.22000000</value>
+  <value>-0.02000000</value>
   <mode>lin</mode>
   <mouseControl act="jump">continuous</mouseControl>
   <resolution>-1.00000000</resolution>
@@ -231,7 +286,7 @@ endin
   <midicc>0</midicc>
   <minimum>-1.00000000</minimum>
   <maximum>1.00000000</maximum>
-  <value>-0.08000000</value>
+  <value>-0.06000000</value>
   <mode>lin</mode>
   <mouseControl act="jump">continuous</mouseControl>
   <resolution>-1.00000000</resolution>
@@ -249,7 +304,7 @@ endin
   <midicc>0</midicc>
   <minimum>-1.00000000</minimum>
   <maximum>1.00000000</maximum>
-  <value>0.16000000</value>
+  <value>-0.06000000</value>
   <mode>lin</mode>
   <mouseControl act="jump">continuous</mouseControl>
   <resolution>-1.00000000</resolution>
@@ -290,7 +345,40 @@ endin
   <image>/</image>
   <eventLine>i "bellCascade" 0 0 10</eventLine>
   <latch>false</latch>
-  <latched>true</latched>
+  <latched>false</latched>
+ </bsbObject>
+ <bsbObject type="BSBController" version="2">
+  <objectName>accX1</objectName>
+  <x>26</x>
+  <y>459</y>
+  <width>112</width>
+  <height>106</height>
+  <uuid>{fc17a7ea-fbbd-4cef-b593-9d61f9db1653}</uuid>
+  <visible>true</visible>
+  <midichan>0</midichan>
+  <midicc>0</midicc>
+  <objectName2>accY1</objectName2>
+  <xMin>0.00000000</xMin>
+  <xMax>1.00000000</xMax>
+  <yMin>0.00000000</yMin>
+  <yMax>1.00000000</yMax>
+  <xValue>0.40178571</xValue>
+  <yValue>0.01886792</yValue>
+  <type>crosshair</type>
+  <pointsize>1</pointsize>
+  <fadeSpeed>0.00000000</fadeSpeed>
+  <mouseControl act="press">jump</mouseControl>
+  <color>
+   <r>0</r>
+   <g>234</g>
+   <b>0</b>
+  </color>
+  <randomizable mode="both" group="0">false</randomizable>
+  <bgcolor>
+   <r>0</r>
+   <g>0</g>
+   <b>0</b>
+  </bgcolor>
  </bsbObject>
 </bsbPanel>
 <bsbPresets>
@@ -303,7 +391,7 @@ endin
 <value id="{5ae6c887-beac-40d3-967d-1d06dc92b231}" mode="1" >-0.06000000</value>
 </preset>
 </bsbPresets>
-<EventPanel name="" tempo="60.00000000" loop="8.00000000" x="1261" y="597" width="655" height="346" visible="false" loopStart="0" loopEnd="0">i "blower" 0 1 1 0 
+<EventPanel name="" tempo="60.00000000" loop="8.00000000" x="1261" y="597" width="655" height="346" visible="true" loopStart="0" loopEnd="0">i "blower" 0 1 1 0 
 i "blower" 0 1 2 0 
     
 i "blower" 0 1 3 1 
