@@ -10,6 +10,7 @@ veebiäpp - gamelani moodi klajvid; tähesadu valitud suunas (vt. reso_game)
 
 <CsoundSynthesizer>
 <CsOptions>
+-odac:system:playback_ -+rtaudio=jack  -d
 </CsOptions>
 <CsInstruments>
 
@@ -25,6 +26,7 @@ nchnls = 2
 ;; Globals
 giBaseFreq = 32
 giThreshold = 0.25
+gkVolume init 0.5
 
 seed 0
 
@@ -40,6 +42,8 @@ chn_k "accX1",1
 chn_k "accY1",1
 chn_k "speed1",1
 
+chn_k "volume",1
+
 chnset 0.2, "speed1"
 
 gSbreather[] fillarray "b1", "b2", "b3", "b4", "b5", "b6"
@@ -50,6 +54,12 @@ loop1:
 	schedule nstrnum("blowReader")+gindex/10,0,-1,gindex
 	print gindex
 	loop_le gindex, 1, 6, loop1
+
+alwayson "controller"
+instr controller
+	gkVolume chnget "volume"
+	printk2 gkVolume
+endin
 	
 instr blowReader
 	iblower = p4 ; 1,2,..6
@@ -133,6 +143,10 @@ instr bell
 	outs aL, aR
 endin
 
+; schedule 30.1, 0, 2, 1, 1
+; schedule 30.1, 0,2, 1, -1
+
+
 ;schedule 30.1, 0, -1, 1, 1
 ;schedule 30.1, 0, -1, 1, -1
 ;schedule -30.1, 0, 0, 1, 0
@@ -155,7 +169,7 @@ instr breathing, 30
 	printk2 kband
 	
 	kamp  = 0.1 ;+ ky ;* (1 + abs(kspeed))
-	aenv linenr kamp, 0.3, 0.5,0.001	
+	aenv linenr kamp, 0.3, 0.2,0.001	
 	; TODO: port!
 	
 	
@@ -214,7 +228,7 @@ endin
   <midicc>0</midicc>
   <minimum>-1.00000000</minimum>
   <maximum>1.00000000</maximum>
-  <value>-0.04000000</value>
+  <value>-0.56000000</value>
   <mode>lin</mode>
   <mouseControl act="jump">continuous</mouseControl>
   <resolution>-1.00000000</resolution>
@@ -232,7 +246,7 @@ endin
   <midicc>0</midicc>
   <minimum>-1.00000000</minimum>
   <maximum>1.00000000</maximum>
-  <value>-0.02000000</value>
+  <value>-0.76000000</value>
   <mode>lin</mode>
   <mouseControl act="jump">continuous</mouseControl>
   <resolution>-1.00000000</resolution>
@@ -250,7 +264,7 @@ endin
   <midicc>0</midicc>
   <minimum>-1.00000000</minimum>
   <maximum>1.00000000</maximum>
-  <value>-0.02000000</value>
+  <value>-0.62000000</value>
   <mode>lin</mode>
   <mouseControl act="jump">continuous</mouseControl>
   <resolution>-1.00000000</resolution>
@@ -268,7 +282,7 @@ endin
   <midicc>0</midicc>
   <minimum>-1.00000000</minimum>
   <maximum>1.00000000</maximum>
-  <value>-0.02000000</value>
+  <value>-0.56000000</value>
   <mode>lin</mode>
   <mouseControl act="jump">continuous</mouseControl>
   <resolution>-1.00000000</resolution>
@@ -286,7 +300,7 @@ endin
   <midicc>0</midicc>
   <minimum>-1.00000000</minimum>
   <maximum>1.00000000</maximum>
-  <value>-0.06000000</value>
+  <value>-0.62000000</value>
   <mode>lin</mode>
   <mouseControl act="jump">continuous</mouseControl>
   <resolution>-1.00000000</resolution>
@@ -304,7 +318,7 @@ endin
   <midicc>0</midicc>
   <minimum>-1.00000000</minimum>
   <maximum>1.00000000</maximum>
-  <value>-0.06000000</value>
+  <value>-0.80000000</value>
   <mode>lin</mode>
   <mouseControl act="jump">continuous</mouseControl>
   <resolution>-1.00000000</resolution>
@@ -345,7 +359,7 @@ endin
   <image>/</image>
   <eventLine>i "bellCascade" 0 0 10</eventLine>
   <latch>false</latch>
-  <latched>false</latched>
+  <latched>true</latched>
  </bsbObject>
  <bsbObject type="BSBController" version="2">
   <objectName>accX1</objectName>
@@ -362,8 +376,8 @@ endin
   <xMax>1.00000000</xMax>
   <yMin>0.00000000</yMin>
   <yMax>1.00000000</yMax>
-  <xValue>0.40178571</xValue>
-  <yValue>0.01886792</yValue>
+  <xValue>0.37500000</xValue>
+  <yValue>0.58490566</yValue>
   <type>crosshair</type>
   <pointsize>1</pointsize>
   <fadeSpeed>0.00000000</fadeSpeed>

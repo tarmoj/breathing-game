@@ -4,17 +4,24 @@
 #
 #-------------------------------------------------
 
-QT       += core gui
+QT       += core gui websockets
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 TARGET = breathing-server
 TEMPLATE = app
 
+INCLUDEPATH += /usr/local/include/csound
 
 SOURCES += main.cpp\
-        breathwindow.cpp
+        breathwindow.cpp \
+    wsserver.cpp \
+    csengine.cpp
 
-HEADERS  += breathwindow.h
+HEADERS  += breathwindow.h \
+    wsserver.h \
+    csengine.h
 
 FORMS    += breathwindow.ui
+
+unix|win32: LIBS += -lcsnd6 -lcsound64
