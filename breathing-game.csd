@@ -30,6 +30,10 @@ gkVolume init 0.5
 
 seed 0
 
+;; Tables
+
+giHanning ftgen 0,0,4096, 20, 2
+
 ;; Channels
 chn_k "b1",3
 chn_k "b2",3
@@ -143,6 +147,24 @@ instr bell
 	outs aL, aR
 endin
 
+; schedule "testBreath",0,3, 0, 1
+;
+
+instr testBreath
+	iplayer = p4
+	ky line p5,p3,p6
+	kspeed expseg 0.05, p3/2, p7, p3/2, 0.05
+	kx line p8,p3,p9
+	inOut = (p6>p5) ? 1 :-1
+	chnset ky, "accY1"
+	
+	chnset kspeed, "speed1"
+	chnset kx, "accX1"
+	schedule "breathing",0,p3, iplayer, inOut
+	;outs a1, a2
+endin
+
+
 ; schedule 30.1, 0, 2, 1, 1
 ; schedule 30.1, 0,2, 1, -1
 
@@ -158,35 +180,38 @@ instr breathing, 30
 	SaccX sprintf "accX%d",iplayer
 	Speed sprintf "speed%d",iplayer
 	ky chnget SaccY ; vertical accelometer from the phone
+	ky port ky,0.05,chnget:i(SaccY)
 	kx chnget SaccX
+	kx limit kx, 0,0.9 ; for any case
+	kx port kx,0.05,chnget:i(SaccX)
 	kspeed chnget Speed ; is it needed after all? intensity? 
+	kspeed port kspeed,0.05,chnget:i(Speed)
 	ifreq random 300,400  ;init (inOut==$IN) ? random:i(300,400) : random:i(400,500)
 	iband init 100  ; (inOut==$IN) ? random:i(40,50) : random:i(10,20)
-	print ifreq, iband
+	;print ifreq, iband
 	; võibolla siiski lubada negatiivne ky - alla liikudes läheb igal juhul madalamaks?
 	kfreq =  ifreq + ifreq*ky/2 ;*inOut ; inout negative if breathing out 
 	kband = iband - iband*ky*0.9 ; if inhaling, band narrower
-	printk2 kband
-	
-	kamp  = 0.1 ;+ ky ;* (1 + abs(kspeed))
-	aenv linenr kamp, 0.3, 0.2,0.001	
-	; TODO: port!
+	;printk2 kband
 	
 	
-;	if (inOut==$IN) then
-		
-;		kfreq line random:i(300,400),p3,random:i(400,500)
-;		kband line 40,p3,10
-;		aenv expsegr 0.0001, 0.5, 0.05, 4,1,1,0.001
-;	else
-;		kfreq line random:i(400,500),p3,random:i(300,400)
-;		kband line 10,p3,40
-;		aenv linsegr 0.0001, 1, 0.5, 2,0.001
-;	endif
+	
+	ky limit ky,0, 1; for any case
+	;kamp  = 0.1 + tab:k(ky,giHanning,1)/2  -pole päris hea
+	
+	kamp = 0.01 +  sqrt(abs(kspeed))/2 ; kspeed min always 0.05
+	kamp limit kamp,0, 0.9 
+	;printk2 kamp
+	
+	asine poscil kamp, random:i(8,16)*giBaseFreq 	 ; sine tone
+	aenv linenr kamp, 0.3, 0.3,0.001	
+
+
+	
+
 	iamp = 4 ; amp sõltuvusse kiirendusest
-	
 	asig butterbp pinkish(iamp),kfreq, kband
-	aout = asig*aenv
+	aout = (asig*(1-kx) + kx*asine)  *aenv ; the more tilted in x direction, the more sine tone in mix
 	outs aout, aout	
 	
 endin
@@ -202,13 +227,15 @@ endin
 
 
 
+
+
 <bsbPanel>
  <label>Widgets</label>
  <objectName/>
  <x>0</x>
  <y>0</y>
  <width>357</width>
- <height>431</height>
+ <height>565</height>
  <visible>true</visible>
  <uuid/>
  <bgcolor mode="nobackground">
@@ -216,7 +243,7 @@ endin
   <g>255</g>
   <b>255</b>
  </bgcolor>
- <bsbObject type="BSBVSlider" version="2">
+ <bsbObject version="2" type="BSBVSlider">
   <objectName>b1</objectName>
   <x>10</x>
   <y>83</y>
@@ -228,13 +255,13 @@ endin
   <midicc>0</midicc>
   <minimum>-1.00000000</minimum>
   <maximum>1.00000000</maximum>
-  <value>-0.56000000</value>
+  <value>-0.04000000</value>
   <mode>lin</mode>
   <mouseControl act="jump">continuous</mouseControl>
   <resolution>-1.00000000</resolution>
   <randomizable group="0">false</randomizable>
  </bsbObject>
- <bsbObject type="BSBVSlider" version="2">
+ <bsbObject version="2" type="BSBVSlider">
   <objectName>b2</objectName>
   <x>36</x>
   <y>83</y>
@@ -246,13 +273,13 @@ endin
   <midicc>0</midicc>
   <minimum>-1.00000000</minimum>
   <maximum>1.00000000</maximum>
-  <value>-0.76000000</value>
+  <value>-0.02000000</value>
   <mode>lin</mode>
   <mouseControl act="jump">continuous</mouseControl>
   <resolution>-1.00000000</resolution>
   <randomizable group="0">false</randomizable>
  </bsbObject>
- <bsbObject type="BSBVSlider" version="2">
+ <bsbObject version="2" type="BSBVSlider">
   <objectName>b3</objectName>
   <x>59</x>
   <y>83</y>
@@ -264,13 +291,13 @@ endin
   <midicc>0</midicc>
   <minimum>-1.00000000</minimum>
   <maximum>1.00000000</maximum>
-  <value>-0.62000000</value>
+  <value>-0.02000000</value>
   <mode>lin</mode>
   <mouseControl act="jump">continuous</mouseControl>
   <resolution>-1.00000000</resolution>
   <randomizable group="0">false</randomizable>
  </bsbObject>
- <bsbObject type="BSBVSlider" version="2">
+ <bsbObject version="2" type="BSBVSlider">
   <objectName>b4</objectName>
   <x>85</x>
   <y>83</y>
@@ -282,13 +309,13 @@ endin
   <midicc>0</midicc>
   <minimum>-1.00000000</minimum>
   <maximum>1.00000000</maximum>
-  <value>-0.56000000</value>
+  <value>-0.02000000</value>
   <mode>lin</mode>
   <mouseControl act="jump">continuous</mouseControl>
   <resolution>-1.00000000</resolution>
   <randomizable group="0">false</randomizable>
  </bsbObject>
- <bsbObject type="BSBVSlider" version="2">
+ <bsbObject version="2" type="BSBVSlider">
   <objectName>b5</objectName>
   <x>110</x>
   <y>83</y>
@@ -300,13 +327,13 @@ endin
   <midicc>0</midicc>
   <minimum>-1.00000000</minimum>
   <maximum>1.00000000</maximum>
-  <value>-0.62000000</value>
+  <value>-0.06000000</value>
   <mode>lin</mode>
   <mouseControl act="jump">continuous</mouseControl>
   <resolution>-1.00000000</resolution>
   <randomizable group="0">false</randomizable>
  </bsbObject>
- <bsbObject type="BSBVSlider" version="2">
+ <bsbObject version="2" type="BSBVSlider">
   <objectName>b6</objectName>
   <x>138</x>
   <y>83</y>
@@ -318,13 +345,13 @@ endin
   <midicc>0</midicc>
   <minimum>-1.00000000</minimum>
   <maximum>1.00000000</maximum>
-  <value>-0.80000000</value>
+  <value>-0.06000000</value>
   <mode>lin</mode>
   <mouseControl act="jump">continuous</mouseControl>
   <resolution>-1.00000000</resolution>
   <randomizable group="0">false</randomizable>
  </bsbObject>
- <bsbObject type="BSBScope" version="2">
+ <bsbObject version="2" type="BSBScope">
   <objectName>scope</objectName>
   <x>7</x>
   <y>281</y>
@@ -342,7 +369,7 @@ endin
   <dispy>1.00000000</dispy>
   <mode>0.00000000</mode>
  </bsbObject>
- <bsbObject type="BSBButton" version="2">
+ <bsbObject version="2" type="BSBButton">
   <objectName>button7</objectName>
   <x>8</x>
   <y>223</y>
@@ -361,7 +388,7 @@ endin
   <latch>false</latch>
   <latched>true</latched>
  </bsbObject>
- <bsbObject type="BSBController" version="2">
+ <bsbObject version="2" type="BSBController">
   <objectName>accX1</objectName>
   <x>26</x>
   <y>459</y>
@@ -405,7 +432,7 @@ endin
 <value id="{5ae6c887-beac-40d3-967d-1d06dc92b231}" mode="1" >-0.06000000</value>
 </preset>
 </bsbPresets>
-<EventPanel name="" tempo="60.00000000" loop="8.00000000" x="1261" y="597" width="655" height="346" visible="true" loopStart="0" loopEnd="0">i "blower" 0 1 1 0 
+<EventPanel name="blower" tempo="60.00000000" loop="8.00000000" x="1261" y="597" width="655" height="346" visible="false" loopStart="0" loopEnd="0">i "blower" 0 1 1 0 
 i "blower" 0 1 2 0 
     
 i "blower" 0 1 3 1 
@@ -413,3 +440,10 @@ i "blower" 0 1 4 0
 1    
 i "blower" 0 1 5 0 
 i "blower" 0 1 6 0 </EventPanel>
+<EventPanel name="testBreath" tempo="60.00000000" loop="8.00000000" x="133" y="398" width="655" height="346" visible="true" loopStart="0" loopEnd="0">;  ;.  ;.  ;.  ;player  ;ystart  ;yend  ;speed  ;xstart  ;xend 
+i "testBreath" 0 4 1 0 0.9 0.5 0.3 1 
+i "testBreath" 0 2 1 0.9 0.1 0.2 0 1 
+i "testBreath" 0 2 1 0 0.5 1 0.5 0.8 
+i "testBreath" 0 2 1 0.5 0.9 1 0 1 
+i "testBreath" 0 0.5 1 0.9 0.3 1.5 0 0 
+i "testBreath" 0 2 1 1 0 1 0 0 </EventPanel>
