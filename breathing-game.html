@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta content="text/html; charset=utf-8" http-equiv="content-type">
+    <meta name="viewport" content="width=540, initial-scale=0.7, maximum-scale=0.7, minimum-scale=0.7, user-scalable=no" />
+    <title>Breathing-game</title>
+    <meta content="Tarmo Johannes" id="author">
+	
+	<link type="text/css" rel="stylesheet" href="soundgames.css">
+	
+    <script src="ws-functions.js"></script> <!-- websocket functions -->
+    
+    <script defer="defer">
+	
+	
+	
+
+	function onMessage(evt) // not used
+	{
+		writeToScreen("Message from server: " + evt.data + '\n');
+ 		//var mess_array = evt.data.split(" ");
+ 		//console.log(mess_array[0]); 		
+	}
+
+	
+  
+  // UI functions --------------------------------------------------------
+		
+	
+	// messages to Ws server
+	 
+	function sendnote(note) {
+		var instrument = parseInt(document.getElementById("instrument").value ); // index form menu: 0- low, 1- medium, 1- high // samples playable also in html!
+		// check if websocket open
+		doSend("gamelan," + (instrument*10+note).toString() + "," + document.getElementById("pan").value );
+		var button = document.getElementById("b"+(note+1).toString());
+		button.disabled = true;
+		setTimeout( function() {button.disabled = false;}, 
+			1000 			); // 0 button (low) for 4 seconds, 1 button (medium) for 
+		
+	}
+	
+	function sendBells() {
+		doSend("bells," + document.getElementById("pan").value );
+		var button = document.getElementById("bellButton");
+		button.disabled = true;
+		setTimeout( function() {button.disabled = false;}, 	30*1000);
+	}
+	
+	var testing = false;
+	
+	function startTest(testers) {
+		testing = true;
+		for (var i=0;i<testers;i++)
+			tester()
+	
+	}
+	
+	function stopTest() {testing=false;}
+	
+	function tester() { 
+		// do something doSendArray(new Int8Array([NOTEON,100,player])); // 100 tells that this is a test call, don't care about callers IP in the srver
+		 var interval = 1;
+		 var channelTester = setInterval(function(){
+			 //something
+		}, interval);
+
+		setTimeout(function(){ 
+			clearInterval(channelTester);
+			if (testing) tester(); // recursive call to itsself
+		}, 1000);
+
+		
+	}
+	
+	
+	//window.onresize = drawEverything;
+	
+	
+	window.onload = function(){
+		doConnect(); // init websocket on start; suppose the server is ready
+		
+		//newPan(document.myform.pan.value);
+		var connectButton = document.getElementById("connectButton");
+		connectButton.onclick = function() { 
+			doConnect();
+		}
+		
+	};
+	
+	
+		
+	</script>
+  </head>
+  <body>
+    <span style='margin-left:440px'>
+<!--    <small><i><a href="echogame_est.html">Eesti</a></i></small></span>-->
+    <h1>Breathing game</h1><br>
+    <i>Tap or click on the gamelan instruments to play them</i><br>
+    <form name="myform">
+
+    <br>
+
+     
+	Panning: <i>Left</i> <input type="range" class="range" id="pan" min=0 max=1 step=0.01 value=0.5" > <i>Right</i> <br><br>
+	<br>
+<!--	TODO: madalam instrument 4 sek inaktiivne, keskmine 2, kõrge ei piira-->
+	Select a gamelan instrument:
+	<select id="instrument">
+      <option value=0>Kempul (low)</option>
+      <option value=1>Slentem (medium)</option>
+      <option value=2>Saron?</option>
+    </select>
+    <br><br>
+    <button type="button"  id="b1" onclick="sendnote(0)">1</button>
+   <button type="button"  id="b2" onclick="sendnote(1)">2</button>
+   <button type="button"  id="b3" onclick="sendnote(2)">3</button>
+   <button type="button"  id="b4" onclick="sendnote(3)">4</button>
+   <br>
+    <br>
+    <button type="button"  id="bellButton" onclick='sendBells()'>Bells</button>
+    <br><br>
+    Server address: <input value="ws://localhost:33033/ws" id="url" type="text"><br>
+    <button type="button" id="connectButton" onclick="doConnect();">Connect</button>
+    <!--<button type="button" id="disconnectButton">Disonnect</button>-->
+    <br>
+    <br>
+    <p><textarea id="outputtext" rows="5" cols="30" readonly></textarea> </p>
+    
+    
+    </form>
+   
+   
+   
+   
+  </body>
+</html>
