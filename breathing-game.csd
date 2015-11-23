@@ -11,6 +11,7 @@ veebiäpp - gamelani moodi klajvid; tähesadu valitud suunas (vt. reso_game)
 <CsoundSynthesizer>
 <CsOptions>
 -odac:system:playback_ -+rtaudio=jack  -d
+--env:SFDIR+="./gamelan"  ; does not work ....
 </CsOptions>
 <CsInstruments>
 
@@ -176,6 +177,11 @@ endin
 instr breathing, 30
 	iplayer = p4 ; 
 	inOut = p5 ; in  1, out -1
+	
+	if (timeinsts()>8) then ; to stop in every case
+		turnoff   
+	endif
+	
 	SaccY sprintf "accY%d",iplayer
 	SaccX sprintf "accX%d",iplayer
 	Speed sprintf "speed%d",iplayer
@@ -216,7 +222,17 @@ instr breathing, 30
 	
 endin
 
-
+;schedule "gamelan",0,1,13
+instr gamelan
+	isound = p4 ; 0..3 - 
+	ipan = p5
+	asig soundin isound
+	ifiledur filelen isound
+	p3 = (ifiledur > 4) ? 4 : ifiledur ; limit to 4 seconds
+	aenv linen 0.5,0.1,p3,p3/2
+	aL, aR pan2 asig*aenv, ipan
+	outs aL, aR
+endin
 
 
 </CsInstruments>
@@ -224,6 +240,8 @@ endin
 
 </CsScore>
 </CsoundSynthesizer>
+
+
 
 
 
@@ -245,8 +263,8 @@ endin
  </bgcolor>
  <bsbObject version="2" type="BSBVSlider">
   <objectName>b1</objectName>
-  <x>10</x>
-  <y>83</y>
+  <x>9</x>
+  <y>107</y>
   <width>20</width>
   <height>100</height>
   <uuid>{c0ef4f8c-26bc-4cef-9a4c-03285a4298f4}</uuid>
@@ -263,8 +281,8 @@ endin
  </bsbObject>
  <bsbObject version="2" type="BSBVSlider">
   <objectName>b2</objectName>
-  <x>36</x>
-  <y>83</y>
+  <x>35</x>
+  <y>107</y>
   <width>20</width>
   <height>100</height>
   <uuid>{d450dd3f-3330-46dd-8d96-301a9e6b1cd3}</uuid>
@@ -281,8 +299,8 @@ endin
  </bsbObject>
  <bsbObject version="2" type="BSBVSlider">
   <objectName>b3</objectName>
-  <x>59</x>
-  <y>83</y>
+  <x>58</x>
+  <y>107</y>
   <width>20</width>
   <height>100</height>
   <uuid>{43a3942c-fb74-48d3-889f-53827700cc69}</uuid>
@@ -299,8 +317,8 @@ endin
  </bsbObject>
  <bsbObject version="2" type="BSBVSlider">
   <objectName>b4</objectName>
-  <x>85</x>
-  <y>83</y>
+  <x>84</x>
+  <y>107</y>
   <width>20</width>
   <height>100</height>
   <uuid>{df8b3bed-592f-4c39-92f1-85b0a7c1d98c}</uuid>
@@ -317,8 +335,8 @@ endin
  </bsbObject>
  <bsbObject version="2" type="BSBVSlider">
   <objectName>b5</objectName>
-  <x>110</x>
-  <y>83</y>
+  <x>109</x>
+  <y>107</y>
   <width>20</width>
   <height>100</height>
   <uuid>{9b01ea71-0b6e-4fc0-8642-9e0c173eb102}</uuid>
@@ -335,8 +353,8 @@ endin
  </bsbObject>
  <bsbObject version="2" type="BSBVSlider">
   <objectName>b6</objectName>
-  <x>138</x>
-  <y>83</y>
+  <x>137</x>
+  <y>107</y>
   <width>20</width>
   <height>100</height>
   <uuid>{5ae6c887-beac-40d3-967d-1d06dc92b231}</uuid>
@@ -386,7 +404,7 @@ endin
   <image>/</image>
   <eventLine>i "bellCascade" 0 0 10</eventLine>
   <latch>false</latch>
-  <latched>true</latched>
+  <latched>false</latched>
  </bsbObject>
  <bsbObject version="2" type="BSBController">
   <objectName>accX1</objectName>
@@ -403,8 +421,8 @@ endin
   <xMax>1.00000000</xMax>
   <yMin>0.00000000</yMin>
   <yMax>1.00000000</yMax>
-  <xValue>0.37500000</xValue>
-  <yValue>0.58490566</yValue>
+  <xValue>0.38392857</xValue>
+  <yValue>0.39622642</yValue>
   <type>crosshair</type>
   <pointsize>1</pointsize>
   <fadeSpeed>0.00000000</fadeSpeed>
@@ -414,12 +432,164 @@ endin
    <g>234</g>
    <b>0</b>
   </color>
-  <randomizable mode="both" group="0">false</randomizable>
+  <randomizable group="0" mode="both">false</randomizable>
   <bgcolor>
    <r>0</r>
    <g>0</g>
    <b>0</b>
   </bgcolor>
+ </bsbObject>
+ <bsbObject version="2" type="BSBButton">
+  <objectName>button9</objectName>
+  <x>7</x>
+  <y>10</y>
+  <width>78</width>
+  <height>38</height>
+  <uuid>{81b8cc80-d7d1-4b80-8000-3ead7af62783}</uuid>
+  <visible>true</visible>
+  <midichan>0</midichan>
+  <midicc>0</midicc>
+  <type>event</type>
+  <pressedValue>1.00000000</pressedValue>
+  <stringvalue/>
+  <text>Gamelan 1</text>
+  <image>/</image>
+  <eventLine>i "gamelan" 0 1 0</eventLine>
+  <latch>false</latch>
+  <latched>false</latched>
+ </bsbObject>
+ <bsbObject version="2" type="BSBButton">
+  <objectName>button9</objectName>
+  <x>89</x>
+  <y>9</y>
+  <width>78</width>
+  <height>38</height>
+  <uuid>{7c86e2c8-314d-4439-a224-c6904ec8bab0}</uuid>
+  <visible>true</visible>
+  <midichan>0</midichan>
+  <midicc>0</midicc>
+  <type>event</type>
+  <pressedValue>1.00000000</pressedValue>
+  <stringvalue/>
+  <text>Gamelan 2</text>
+  <image>/</image>
+  <eventLine>i "gamelan" 0 1 1</eventLine>
+  <latch>false</latch>
+  <latched>false</latched>
+ </bsbObject>
+ <bsbObject version="2" type="BSBButton">
+  <objectName>button9</objectName>
+  <x>171</x>
+  <y>9</y>
+  <width>78</width>
+  <height>38</height>
+  <uuid>{03c44947-fa03-4efc-b5fd-55d79c094473}</uuid>
+  <visible>true</visible>
+  <midichan>0</midichan>
+  <midicc>0</midicc>
+  <type>event</type>
+  <pressedValue>1.00000000</pressedValue>
+  <stringvalue/>
+  <text>Gamelan 3</text>
+  <image>/</image>
+  <eventLine>i "gamelan" 0 1 2</eventLine>
+  <latch>false</latch>
+  <latched>false</latched>
+ </bsbObject>
+ <bsbObject version="2" type="BSBButton">
+  <objectName>button9</objectName>
+  <x>253</x>
+  <y>8</y>
+  <width>78</width>
+  <height>38</height>
+  <uuid>{0fa0e5f1-30b9-457f-81bf-6335e1c06ea1}</uuid>
+  <visible>true</visible>
+  <midichan>0</midichan>
+  <midicc>0</midicc>
+  <type>event</type>
+  <pressedValue>1.00000000</pressedValue>
+  <stringvalue/>
+  <text>Gamelan 4</text>
+  <image>/</image>
+  <eventLine>i "gamelan" 0 1 3</eventLine>
+  <latch>false</latch>
+  <latched>false</latched>
+ </bsbObject>
+ <bsbObject version="2" type="BSBButton">
+  <objectName>button9</objectName>
+  <x>7</x>
+  <y>51</y>
+  <width>78</width>
+  <height>38</height>
+  <uuid>{61a51924-2ff1-435b-9ddd-de21410579ee}</uuid>
+  <visible>true</visible>
+  <midichan>0</midichan>
+  <midicc>0</midicc>
+  <type>event</type>
+  <pressedValue>1.00000000</pressedValue>
+  <stringvalue/>
+  <text>Gamelan 10</text>
+  <image>/</image>
+  <eventLine>i "gamelan" 0 1 10</eventLine>
+  <latch>false</latch>
+  <latched>false</latched>
+ </bsbObject>
+ <bsbObject version="2" type="BSBButton">
+  <objectName>button9</objectName>
+  <x>89</x>
+  <y>50</y>
+  <width>78</width>
+  <height>38</height>
+  <uuid>{fcc58ab5-5dc5-4668-a929-5c99c44e63ea}</uuid>
+  <visible>true</visible>
+  <midichan>0</midichan>
+  <midicc>0</midicc>
+  <type>event</type>
+  <pressedValue>1.00000000</pressedValue>
+  <stringvalue/>
+  <text>Gamelan 12</text>
+  <image>/</image>
+  <eventLine>i "gamelan" 0 1 11</eventLine>
+  <latch>false</latch>
+  <latched>false</latched>
+ </bsbObject>
+ <bsbObject version="2" type="BSBButton">
+  <objectName>button9</objectName>
+  <x>171</x>
+  <y>50</y>
+  <width>78</width>
+  <height>38</height>
+  <uuid>{e949f778-4c69-4a9b-9ea0-edb2214d30a7}</uuid>
+  <visible>true</visible>
+  <midichan>0</midichan>
+  <midicc>0</midicc>
+  <type>event</type>
+  <pressedValue>1.00000000</pressedValue>
+  <stringvalue/>
+  <text>Gamelan 13</text>
+  <image>/</image>
+  <eventLine>i "gamelan" 0 1 12</eventLine>
+  <latch>false</latch>
+  <latched>false</latched>
+ </bsbObject>
+ <bsbObject version="2" type="BSBButton">
+  <objectName>button9</objectName>
+  <x>253</x>
+  <y>49</y>
+  <width>78</width>
+  <height>38</height>
+  <uuid>{2fde82cb-fb97-49ae-a77f-a36924e69d52}</uuid>
+  <visible>true</visible>
+  <midichan>0</midichan>
+  <midicc>0</midicc>
+  <type>event</type>
+  <pressedValue>1.00000000</pressedValue>
+  <stringvalue/>
+  <text>Gamelan 14</text>
+  <image>/</image>
+  <eventLine>i "gamelan" 0 1 13</eventLine>
+  <latch>false</latch>
+  <latched>false</latched>
  </bsbObject>
 </bsbPanel>
 <bsbPresets>
@@ -440,10 +610,10 @@ i "blower" 0 1 4 0
 1    
 i "blower" 0 1 5 0 
 i "blower" 0 1 6 0 </EventPanel>
-<EventPanel name="testBreath" tempo="60.00000000" loop="8.00000000" x="133" y="398" width="655" height="346" visible="true" loopStart="0" loopEnd="0">;  ;.  ;.  ;.  ;player  ;ystart  ;yend  ;speed  ;xstart  ;xend 
+<EventPanel name="testBreath" tempo="60.00000000" loop="8.00000000" x="133" y="398" width="655" height="346" visible="false" loopStart="0" loopEnd="0">;   ;.   ;.   ;.   ;player   ;ystart   ;yend   ;speed   ;xstart   ;xend 
 i "testBreath" 0 4 1 0 0.9 0.5 0.3 1 
 i "testBreath" 0 2 1 0.9 0.1 0.2 0 1 
 i "testBreath" 0 2 1 0 0.5 1 0.5 0.8 
-i "testBreath" 0 2 1 0.5 0.9 1 0 1 
-i "testBreath" 0 0.5 1 0.9 0.3 1.5 0 0 
+i "testBreath" 0 2 1 0.5 0.9 1 1 1 
+i "testBreath" 0 0.5 1 0.9 0.3 1.5 1 0 
 i "testBreath" 0 2 1 1 0 1 0 0 </EventPanel>

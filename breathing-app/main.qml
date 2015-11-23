@@ -14,7 +14,7 @@ ApplicationWindow {
     property real accY: 0 // longer axis on phone, portrait layout
     property real accX:0 // shorter side
     property real breathSpeed: 0; // for finding breathColumn length; increases when phone moving up; decreases, when down
-    property real speedThreshold: 0.05
+    property real speedThreshold: 0.03
 
 //    menuBar: MenuBar {
 //        Menu {
@@ -78,7 +78,7 @@ ApplicationWindow {
             breathSpeed = (accel.reading.y-oldY) * (interval/1000)
             oldY = accel.reading.y;
 
-            if (socket.status==WebSocket.Open) {
+            if (socket.status==WebSocket.Open && mainArea.containsPress) {
                 if (oldSpeed<speedThreshold && Math.abs(breathSpeed)>=speedThreshold ) {
                     var inOut = (breathSpeed>0) ? "0" : "1" // 1 - in, -1 - out
                     socket.sendTextMessage("breathStart," + inOut) }
@@ -112,48 +112,90 @@ ApplicationWindow {
         }
     }
 
+    Rectangle {
+        id: mainRect
+        color: mainArea.containsPress ? "darkblue" : "blue"
+//        gradient: Gradient {
+//            GradientStop {
+//                position: 0.00;
+//                color: "#ffffff";
+//            }
+//            GradientStop {
+//                position: 1.00;
+//                color: "#000000";
+//            }
+//        }
+        anchors.fill: parent
 
-    Row {
-        x:5; y:5
-        id: serverRow
-        spacing: 5
-
-        Label {
-            text: qsTr("Server: ")
+        MouseArea {
+            id: mainArea
+            anchors.bottom: mainRect.bottom
+            anchors.top: serverRow.bottom
+            width: parent.width
         }
 
-        TextField {
-            id: serverAddress
-            width: 200
-            text: "ws://192.168.1.220:33033/ws"
-        }
+        Row {
+            x:5; y:5
+            id: serverRow
+            spacing: 5
 
-        Button {
-            id: connectButton
-            enabled: !socket.active
-            text: socket.active ? qsTr("Connected") : qsTr("Connect..")
-            onClicked: {
-                //if (!socket.active) {
+            Label {
+                visible: !socket.active;
+                color:"white";
+                id:serverLabel; text: qsTr("Server: ")
+            }
+
+            TextField {
+                id: serverAddress
+                visible: !socket.active
+                width: mainRect.width - serverLabel.width - connectButton.width - 20;
+                text: "ws://192.168.1.220:33033/ws"
+            }
+
+            Button {
+                id: connectButton
+                enabled: !socket.active
+                text: socket.active ? qsTr("Connected") : qsTr("Connect..")
+                onClicked: {
+                    //if (!socket.active) {
                     socket.url = serverAddress.text
                     console.log("Connecting to ",socket.url)
                     socket.active = true;
-                //}
+                    //}
+                }
             }
+
+
+        }
+
+        Rectangle {
+            id: accelRect
+            visible: mainArea.containsPress
+            radius: 5
+            anchors.bottom: mainRect.bottom
+            anchors.bottomMargin: 5
+            anchors.horizontalCenter: parent.horizontalCenter
+            width: mainRect.width*0.95
+            property int maxHeight: mainArea.height
+            height:accY/10.0 * maxHeight // floor teeb vist liiga astmeliseks...
+            color: "green" // qRgb või midagi
+
+            Behavior on height { NumberAnimation {duration: accelerationTimer.interval } } // ei toimi millegi pärast
         }
 
 
+
+
+        Row {
+            anchors.centerIn: parent
+            spacing: 10
+
+
+            Label {id: tiltLabel;  color: "white"; text: "X accel: " + accX.toFixed(0)  }
+            Label {id: accLabel; color: "white"; text: "Y accel: " + accY.toFixed(0)  }
+            Label {id: speedLabel; color: "white"; text: "Y speed: " + breathSpeed.toFixed(2)  }
+        }
+
     }
-
-
-    Row {
-        anchors.centerIn: parent
-        spacing: 10
-
-        Label {id: tiltLabel; text: "X accel: " + accX.toFixed(0)  }
-        Label {id: accLabel; text: "Y accel: " + accY.toFixed(0)  }
-        Label {id: speedLabel; text: "Y speed: " + breathSpeed.toFixed(2)  }
-    }
-
-
 
 }

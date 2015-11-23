@@ -91,6 +91,22 @@ void WsServer::processTextMessage(QString message) // message must be an array o
 		emit newChannelValue("speed"+QString::number(player), speed );
 	}
 
+	if (messageParts[0].startsWith("gamelan")) { // comes in as gamelan,<noteIndex>,<pan>
+		QString scoreLine;
+		scoreLine = "i \"gamelan\" 0 1 " +  messageParts[1] + " " + messageParts[2];
+		qDebug()<<scoreLine;
+		emit newScoreEvent(scoreLine);
+
+	}
+
+	if (messageParts[0].startsWith("bells")) { // comes in as gamelan,<noteIndex>,<pan>
+		QString scoreLine;
+		scoreLine = "i \"bellCascade\" 0 0 " +  QString::number(5+qrand()%10) + " " + messageParts[1];
+		qDebug()<<scoreLine;
+		emit newScoreEvent(scoreLine);
+
+	}
+
 
 }
 
