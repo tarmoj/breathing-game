@@ -11,7 +11,7 @@ veebiäpp - gamelani moodi klajvid; tähesadu valitud suunas (vt. reso_game)
 <CsoundSynthesizer>
 <CsOptions>
 -odac:system:playback_ -+rtaudio=jack  -d
---env:SFDIR+="./gamelan"  ; does not work ....
+;--env:SFDIR+="/home/tarmo/tarmo/csound/breathing-game/gamelan/"  ; does not work ....
 </CsOptions>
 <CsInstruments>
 
@@ -63,7 +63,7 @@ loop1:
 alwayson "controller"
 instr controller
 	gkVolume chnget "volume"
-	printk2 gkVolume
+	;printk2 gkVolume
 endin
 	
 instr blowReader
@@ -108,7 +108,7 @@ instr blower,10
 	outs aout, aout
 endin	
 
-;schedule "bellCascade",0,0,10
+;schedule "bellCascade",0,0,10, 0.5
 instr bellCascade, 20
 	icount = p4
 	imininterval = 0.05
@@ -117,7 +117,7 @@ instr bellCascade, 20
 	index = 0
 	iharmonic random 40,80 ; from basenote giBas
 	istartTime = 0
-	ipan random 0,1
+	ipan = p5
 loop2:
 	iharmonic -= int(random:i(1,4)) ; lower harmoniv with every time, but with random intervals
 	ifreq = giBaseFreq * iharmonic
@@ -161,22 +161,24 @@ instr testBreath
 	
 	chnset kspeed, "speed1"
 	chnset kx, "accX1"
-	schedule "breathing",0,p3, iplayer, inOut
+	ipan = rnd(1)
+	schedule "breathing",0,p3, iplayer, ipan ;inOut
 	;outs a1, a2
 endin
 
 
-; schedule 30.1, 0, 2, 1, 1
+; schedule 30.1, 0, 20, 1, 1
 ; schedule 30.1, 0,2, 1, -1
 
 
-;schedule 30.1, 0, -1, 1, 1
+;schedule 30.1, 0, -1, 1, 1, 
 ;schedule 30.1, 0, -1, 1, -1
 ;schedule -30.1, 0, 0, 1, 0
 
 instr breathing, 30
 	iplayer = p4 ; 
-	inOut = p5 ; in  1, out -1
+	;inOut = p5 ; in  1, out -1
+	ipan = p5
 	
 	if (timeinsts()>8) then ; to stop in every case
 		turnoff   
@@ -204,13 +206,13 @@ instr breathing, 30
 	
 	ky limit ky,0, 1; for any case
 	;kamp  = 0.1 + tab:k(ky,giHanning,1)/2  -pole päris hea
-	
-	kamp = 0.01 +  sqrt(abs(kspeed))/2 ; kspeed min always 0.05
-	kamp limit kamp,0, 0.9 
+	ispeedThreshold = 0.03 ; when a note on/off is sent
+	kamp = (abs(kspeed))*1.5 ;sqrt(abs(kspeed)-ispeedThreshold)/2 ; kspeed min always 0.05  alguls + 0.01
+	kamp limit kamp,0, 0.5
 	;printk2 kamp
 	
-	asine poscil kamp, random:i(8,16)*giBaseFreq 	 ; sine tone
-	aenv linenr kamp, 0.3, 0.3,0.001	
+	asine poscil 0.5, random:i(8,16)*giBaseFreq 	 ; sine tone
+	aenv linenr kamp, 0.6, 1,0.001	
 
 
 	
@@ -218,18 +220,26 @@ instr breathing, 30
 	iamp = 4 ; amp sõltuvusse kiirendusest
 	asig butterbp pinkish(iamp),kfreq, kband
 	aout = (asig*(1-kx) + kx*asine)  *aenv ; the more tilted in x direction, the more sine tone in mix
-	outs aout, aout	
+	aL, aR pan2 aout, ipan
+	outs aL, aR	
 	
 endin
 
 ;schedule "gamelan",0,1,13
 instr gamelan
 	isound = p4 ; 0..3 - 
+	Sfile sprintf "gamelan/soundin.%d", p4
 	ipan = p5
-	asig soundin isound
-	ifiledur filelen isound
+	asig soundin Sfile
+	ifiledur filelen Sfile
 	p3 = (ifiledur > 4) ? 4 : ifiledur ; limit to 4 seconds
-	aenv linen 0.5,0.1,p3,p3/2
+	p3 *= 1+ birnd(0.2) ; randomly differ the length
+	iamp random 0.4, 0.6
+	irise random 0.05,0.3
+	aenv linen iamp,irise,p3,p3/2
+	icutoff = 1000*(1+isound/10) * (1+iamp*2) ; the louder, the higher the cutoff
+	print iamp, icutoff, irise
+	asig butterlp asig, icutoff
 	aL, aR pan2 asig*aenv, ipan
 	outs aL, aR
 endin
@@ -273,7 +283,7 @@ endin
   <midicc>0</midicc>
   <minimum>-1.00000000</minimum>
   <maximum>1.00000000</maximum>
-  <value>-0.04000000</value>
+  <value>-0.14000000</value>
   <mode>lin</mode>
   <mouseControl act="jump">continuous</mouseControl>
   <resolution>-1.00000000</resolution>
@@ -291,7 +301,7 @@ endin
   <midicc>0</midicc>
   <minimum>-1.00000000</minimum>
   <maximum>1.00000000</maximum>
-  <value>-0.02000000</value>
+  <value>0.02000000</value>
   <mode>lin</mode>
   <mouseControl act="jump">continuous</mouseControl>
   <resolution>-1.00000000</resolution>
@@ -309,7 +319,7 @@ endin
   <midicc>0</midicc>
   <minimum>-1.00000000</minimum>
   <maximum>1.00000000</maximum>
-  <value>-0.02000000</value>
+  <value>0.16000000</value>
   <mode>lin</mode>
   <mouseControl act="jump">continuous</mouseControl>
   <resolution>-1.00000000</resolution>
@@ -327,7 +337,7 @@ endin
   <midicc>0</midicc>
   <minimum>-1.00000000</minimum>
   <maximum>1.00000000</maximum>
-  <value>-0.02000000</value>
+  <value>0.22000000</value>
   <mode>lin</mode>
   <mouseControl act="jump">continuous</mouseControl>
   <resolution>-1.00000000</resolution>
@@ -345,7 +355,7 @@ endin
   <midicc>0</midicc>
   <minimum>-1.00000000</minimum>
   <maximum>1.00000000</maximum>
-  <value>-0.06000000</value>
+  <value>0.08000000</value>
   <mode>lin</mode>
   <mouseControl act="jump">continuous</mouseControl>
   <resolution>-1.00000000</resolution>
@@ -363,7 +373,7 @@ endin
   <midicc>0</midicc>
   <minimum>-1.00000000</minimum>
   <maximum>1.00000000</maximum>
-  <value>-0.06000000</value>
+  <value>0.16000000</value>
   <mode>lin</mode>
   <mouseControl act="jump">continuous</mouseControl>
   <resolution>-1.00000000</resolution>
@@ -421,8 +431,8 @@ endin
   <xMax>1.00000000</xMax>
   <yMin>0.00000000</yMin>
   <yMax>1.00000000</yMax>
-  <xValue>0.38392857</xValue>
-  <yValue>0.39622642</yValue>
+  <xValue>0.32142857</xValue>
+  <yValue>0.00000000</yValue>
   <type>crosshair</type>
   <pointsize>1</pointsize>
   <fadeSpeed>0.00000000</fadeSpeed>
@@ -456,7 +466,7 @@ endin
   <image>/</image>
   <eventLine>i "gamelan" 0 1 0</eventLine>
   <latch>false</latch>
-  <latched>false</latched>
+  <latched>true</latched>
  </bsbObject>
  <bsbObject version="2" type="BSBButton">
   <objectName>button9</objectName>
@@ -475,7 +485,7 @@ endin
   <image>/</image>
   <eventLine>i "gamelan" 0 1 1</eventLine>
   <latch>false</latch>
-  <latched>false</latched>
+  <latched>true</latched>
  </bsbObject>
  <bsbObject version="2" type="BSBButton">
   <objectName>button9</objectName>
@@ -494,7 +504,7 @@ endin
   <image>/</image>
   <eventLine>i "gamelan" 0 1 2</eventLine>
   <latch>false</latch>
-  <latched>false</latched>
+  <latched>true</latched>
  </bsbObject>
  <bsbObject version="2" type="BSBButton">
   <objectName>button9</objectName>
@@ -513,7 +523,7 @@ endin
   <image>/</image>
   <eventLine>i "gamelan" 0 1 3</eventLine>
   <latch>false</latch>
-  <latched>false</latched>
+  <latched>true</latched>
  </bsbObject>
  <bsbObject version="2" type="BSBButton">
   <objectName>button9</objectName>
@@ -532,7 +542,7 @@ endin
   <image>/</image>
   <eventLine>i "gamelan" 0 1 10</eventLine>
   <latch>false</latch>
-  <latched>false</latched>
+  <latched>true</latched>
  </bsbObject>
  <bsbObject version="2" type="BSBButton">
   <objectName>button9</objectName>
@@ -551,7 +561,7 @@ endin
   <image>/</image>
   <eventLine>i "gamelan" 0 1 11</eventLine>
   <latch>false</latch>
-  <latched>false</latched>
+  <latched>true</latched>
  </bsbObject>
  <bsbObject version="2" type="BSBButton">
   <objectName>button9</objectName>
@@ -570,7 +580,7 @@ endin
   <image>/</image>
   <eventLine>i "gamelan" 0 1 12</eventLine>
   <latch>false</latch>
-  <latched>false</latched>
+  <latched>true</latched>
  </bsbObject>
  <bsbObject version="2" type="BSBButton">
   <objectName>button9</objectName>
@@ -589,7 +599,7 @@ endin
   <image>/</image>
   <eventLine>i "gamelan" 0 1 13</eventLine>
   <latch>false</latch>
-  <latched>false</latched>
+  <latched>true</latched>
  </bsbObject>
 </bsbPanel>
 <bsbPresets>

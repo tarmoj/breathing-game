@@ -35,6 +35,9 @@
 		doSend("gamelan," + (instrument*10+note).toString() + "," + document.getElementById("pan").value );
 		var button = document.getElementById("b"+(note+1).toString());
 		button.disabled = true;
+// 		var soundElement = document.getElementById("sound"+note.toString());
+// 		//soundElement.src="gamelan/soundin."+note.toString();
+// 		soundElement.play();
 		setTimeout( function() {button.disabled = false;}, 
 			1000 			); // 0 button (low) for 4 seconds, 1 button (medium) for 
 		
@@ -86,6 +89,8 @@
 			doConnect();
 		}
 		
+		
+		
 	};
 	
 	
@@ -93,6 +98,23 @@
 	</script>
   </head>
   <body>
+  <!--BAD CODE; BETTER DO IN IN JAVASCRIPT:-->
+	<!--<audio id="sound0">
+  <source src="gamelan/soundin.0">
+	</audio>
+	<audio id="sound1">
+  <source src="gamelan/soundin.1">
+	</audio>
+	<audio id="sound2">
+  <source src="gamelan/soundin.2">
+	</audio>
+	<audio id="sound3">
+  <source src="gamelan/soundin.3">
+	</audio>
+	<audio id="sound10">
+  <source src="gamelan/soundin.10">
+	</audio>-->
+  
     <span style='margin-left:440px'>
 <!--    <small><i><a href="echogame_est.html">Eesti</a></i></small></span>-->
     <h1>Breathing game</h1><br>
@@ -109,18 +131,18 @@
 	<select id="instrument">
       <option value=0>Kempul (low)</option>
       <option value=1>Slentem (medium)</option>
-      <option value=2>Saron?</option>
+      <option value=2>Saron (high)</option>
     </select>
     <br><br>
-    <button type="button"  id="b1" onclick="sendnote(0)">1</button>
-   <button type="button"  id="b2" onclick="sendnote(1)">2</button>
-   <button type="button"  id="b3" onclick="sendnote(2)">3</button>
-   <button type="button"  id="b4" onclick="sendnote(3)">4</button>
+    <button type="button"  id="b1" onclick="sendnote(0)" style="width:15%">1</button>
+   <button type="button"  id="b2" onclick="sendnote(1)"  style="width:15%">2</button>
+   <button type="button"  id="b3" onclick="sendnote(2)"  style="width:15%">3</button>
+   <button type="button"  id="b4" onclick="sendnote(3)"  style="width:15%">4</button>
    <br>
     <br>
     <button type="button"  id="bellButton" onclick='sendBells()'>Bells</button>
     <br><br>
-    Server address: <input value="ws://localhost:33033/ws" id="url" type="text"><br>
+    Server address: <input value="ws://192.168.1.220:33033/ws" id="url" type="text"><br>
     <button type="button" id="connectButton" onclick="doConnect();">Connect</button>
     <!--<button type="button" id="disconnectButton">Disonnect</button>-->
     <br>

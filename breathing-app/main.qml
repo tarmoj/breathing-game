@@ -62,7 +62,7 @@ ApplicationWindow {
 //    }
 
     Component.onCompleted: {
-        //socket.active = true;
+        socket.active = true;
     }
 
     Timer {
@@ -80,8 +80,7 @@ ApplicationWindow {
 
             if (socket.status==WebSocket.Open && mainArea.containsPress) {
                 if (oldSpeed<speedThreshold && Math.abs(breathSpeed)>=speedThreshold ) {
-                    var inOut = (breathSpeed>0) ? "0" : "1" // 1 - in, -1 - out
-                    socket.sendTextMessage("breathStart," + inOut) }
+                    socket.sendTextMessage("breathStart," + panSlider.value) }
                 if (oldSpeed>=speedThreshold && Math.abs(breathSpeed)<speedThreshold )
                     socket.sendTextMessage("breathEnd")
                 if (Math.abs(breathSpeed) > speedThreshold) { // send phone position info while moving
@@ -132,6 +131,13 @@ ApplicationWindow {
             anchors.bottom: mainRect.bottom
             anchors.top: serverRow.bottom
             width: parent.width
+
+            onReleased: {
+                console.log("RELEASED")
+                if (Math.abs(breathSpeed)>speedThreshold  && socket.status==WebSocket.Open)
+                    socket.sendTextMessage("breathEnd")
+            }
+
         }
 
         Row {
@@ -168,6 +174,24 @@ ApplicationWindow {
 
         }
 
+        Row {
+            id: sliderRow
+            anchors.top: serverRow.bottom
+            anchors.topMargin: 20
+            anchors.horizontalCenter: parent.horizontalCenter
+            spacing: 20
+
+            Label {id: leftLAbel; text:qsTr("Left"); color: "white"}
+
+            Slider {
+                id: panSlider
+                value: 0.5
+                width: mainRect.width * 0.8 - leftLAbel.width - rightLAbel.width
+            }
+            Label {id: rightLAbel; text:qsTr("Right"); color: "white"}
+        }
+
+
         Rectangle {
             id: accelRect
             visible: mainArea.containsPress
@@ -175,13 +199,15 @@ ApplicationWindow {
             anchors.bottom: mainRect.bottom
             anchors.bottomMargin: 5
             anchors.horizontalCenter: parent.horizontalCenter
-            width: mainRect.width*0.95
+            width: mainRect.width*0.75
             property int maxHeight: mainArea.height
             height:accY/10.0 * maxHeight // floor teeb vist liiga astmeliseks...
             color: "green" // qRgb või midagi
 
             Behavior on height { NumberAnimation {duration: accelerationTimer.interval } } // ei toimi millegi pärast
         }
+
+
 
 
 

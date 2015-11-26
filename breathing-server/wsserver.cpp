@@ -67,10 +67,11 @@ void WsServer::processTextMessage(QString message) // message must be an array o
 
 	qDebug()<<"Message received: "<<message;
 	QStringList messageParts = message.split(",");
-	if (messageParts[0].startsWith("breathStart")) {
+	if (messageParts[0].startsWith("breathStart")) { // comes in as breath, <pan>
 
 		QString scoreLine;
-		scoreLine.sprintf("i 30.%d 0 -1 %d 1", player, player );
+		scoreLine.sprintf("i 30.%d 0 -1 %d ", player, player ); // p4 - playerm p5- panning parameter pan
+		scoreLine += messageParts[1]; // panning
 		qDebug()<<"Starting breath for player " << player << scoreLine;
 		emit newScoreEvent(scoreLine);
 		// TODO: messageParts[1] -  "IN" või "OUT" <- parem arvud..., saada CSoundile kui p4 -  mängija, p5 in/out (in -0, out - 1)
