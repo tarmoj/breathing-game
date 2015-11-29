@@ -1,12 +1,3 @@
-/*
-pillid
-
-puhkpillid - 3 paari, ühes paaris välja +/-16 HZ, sisse 0; sagedused: Base=128 base, 1.5*base, 2*base
-
-telefonid/app - hingamine - ribafiltri sahin, sagedused 32 HZ osahelid; telfeno külili - rohkem tooni ? filtri laius vm tooni
-
-veebiäpp - gamelani moodi klajvid; tähesadu valitud suunas (vt. reso_game) 
-*/
 
 <CsoundSynthesizer>
 <CsOptions>
@@ -16,8 +7,8 @@ veebiäpp - gamelani moodi klajvid; tähesadu valitud suunas (vt. reso_game)
 <CsInstruments>
 
 sr = 44100 
-ksmps = 32
-nchnls = 2
+ksmps = 8
+nchnls = 6;2
 0dbfs = 1
 
 ;; Constants
@@ -26,8 +17,13 @@ nchnls = 2
 
 ;; Globals
 giBaseFreq = 32
-giThreshold = 0.25
+giThreshold = 0.15
 gkVolume init 0.5
+gkBlowerVolume init 0.5
+gkBellsVolume init 0.5
+gkGamelanVolume init 0.5
+gkBreathVolume init 0.5
+gkPhase init 0
 
 seed 0
 
@@ -48,13 +44,47 @@ chn_k "accY1",1
 chn_k "speed1",1
 
 chn_k "volume",1
+chn_k "blowvolume",1
+chn_k "bellvolume",1
+chn_k "gamelanvolume",1
+chn_k "breathvolume",1
+chn_k "rotationspeed",1
 
 chnset 0.2, "speed1"
+chnset 0, "rotationspeed"
 
-gSbreather[] fillarray "b1", "b2", "b3", "b4", "b5", "b6"
+;gSbreather[] fillarray "b1", "b2", "b3", "b4", "b5", "b6"
 gkBreath[] init 7
 
 gindex = 1 ; start readers for blowingpressure
+
+;; instr 0
+
+opcode panning, 0,ak
+	asig, istartpan xin
+	istartdegree = istartpan*90-45
+	kazim init istartdegree
+	kphase phasor chnget:k("rotationspeed")
+	if (nchnls==6) then
+		;if (chnget:k("rotationspeed") > 0 ) then 
+			kazim = istartdegree + kphase*360
+			kazim wrap kazim, 0, 360
+		;endif
+		
+		printk 0.25, kphase
+		printk 0.25, kazim
+		a1,a2,a3,a4,a5,a6 vbap asig, kazim
+		outh a1,a2,a3,a4,a5,a6
+		
+	else
+		
+		kazim += kphase*180
+		kazim mirror kazim, 0, 90
+		a1,a2 vbap asig, kazim
+		outs a1,a2
+	endif
+endop
+
 loop1:
 	schedule nstrnum("blowReader")+gindex/10,0,-1,gindex
 	print gindex
@@ -62,14 +92,26 @@ loop1:
 
 alwayson "controller"
 instr controller
-	gkVolume chnget "volume"
-	;printk2 gkVolume
+	gkVolume port chnget:k("volume"), 0.02
+	gkBlowerVolume port chnget:k("blowvolume"), 0.02
+	gkBellsVolume port chnget:k("bellvolume"), 0.02			
+	gkBreathVolume port chnget:k("breathvolume"), 0.02
+	gkGamelanVolume port chnget:k("gamelanvolume"), 0.02
+	;gkPhase phasor chnget:k("rotationspeed")
 endin
+
+if (nchnls == 6) then
+	prints "KUUS"
+	vbaplsinit 2, 6, -45, 45, 90, 135, -135, -90
+else
+	vbaplsinit 2, 2, -45, 45
+endif
 	
 instr blowReader
 	iblower = p4 ; 1,2,..6
 	Schannel sprintf "b%d", iblower
-	gkBreath[iblower] chnget Schannel
+	kbreath chnget Schannel
+	gkBreath[iblower] port kbreath, 0.05
 	giThreshold = 0.25
 	if (trigger(abs(gkBreath[iblower]),giThreshold,0)==1) then ; pressure bigger than limit
 		printk2 gkBreath[iblower]
@@ -94,17 +136,18 @@ instr blower,10
 	endif
 	print ifreq
 	iamp = 0.1 ; TODO: amp puhumistugevusest
-	kamp = iamp* port(abs(gkBreath[inumber]),0.02,abs(i(gkBreath[inumber])) )
-	aenv linenr kamp, 0.25,0.5, 0.001
-	asig poscil 1, ifreq; TODO: later chebyshev
-	kh2 = kamp *3  * (1+ jspline:k(0.5,0.5,2))
+	kamp = iamp* abs(gkBreath[inumber])
+	kamp port kamp, 0.2
+	aenv linenr kamp, 0.25,1, 0.001
+	asig poscil 1, ifreq
+	kh2 = kamp *3  * (1+ jspline:k(0.5,0.5,2)) ; add some variation to specter
 	;printk2 kh2  
 	kh3 = kamp-giThreshold*2.5 * (1+ jspline:k(0.25,0.5,2))
 	kh4 = kamp-giThreshold*2 * (1+ jspline:k(0.2,0.5,2))
 	asig chebyshevpoly asig, 0, 1, kh2, kh3, kh4
 	;anoise butterbp pinkish(2),ifreq*4, ifreq/2
 	;anoise butterlp pinkish(1),ifreq*4
-	aout = asig* aenv 
+	aout = asig* aenv * gkBlowerVolume * gkVolume
 	outs aout, aout
 endin	
 
@@ -143,9 +186,10 @@ instr bell
 	;print ic1, ic2, ivibrdepth, ivibrrate
 	asig fmbell 1, ifreq, ic1, ic2, ivibrdepth, ivibrrate, -1, -1, -1, -1, -1
 	asig butterlp asig, random:i(1000,2000)
-	aout = asig *aenv
-	aL, aR pan2 aout, ipan
-	outs aL, aR
+	aout = asig *aenv * gkBellsVolume * gkVolume
+	panning aout, ipan ; take care of rotation 
+	;aL, aR pan2 aout, ipan
+	;outs aL, aR
 endin
 
 ; schedule "testBreath",0,3, 0, 1
@@ -219,13 +263,14 @@ instr breathing, 30
 
 	iamp = 4 ; amp sõltuvusse kiirendusest
 	asig butterbp pinkish(iamp),kfreq, kband
-	aout = (asig*(1-kx) + kx*asine)  *aenv ; the more tilted in x direction, the more sine tone in mix
-	aL, aR pan2 aout, ipan
-	outs aL, aR	
+	aout = (asig*(1-kx) + kx*asine)  *aenv * gkBreathVolume * gkVolume; the more tilted in x direction, the more sine tone in mix
+	panning aout, ipan ; take care of rotation 
+	;aL, aR pan2 aout, ipan
+	;outs aL, aR	
 	
 endin
 
-;schedule "gamelan",0,1,13
+;schedule "gamelan",0,10,13,0.5
 instr gamelan
 	isound = p4 ; 0..3 - 
 	Sfile sprintf "gamelan/soundin.%d", p4
@@ -237,19 +282,43 @@ instr gamelan
 	iamp random 0.4, 0.6
 	irise random 0.05,0.3
 	aenv linen iamp,irise,p3,p3/2
-	icutoff = 1000*(1+isound/10) * (1+iamp*2) ; the louder, the higher the cutoff
+	icutoff = 2000*(1+isound/10) * (1+iamp*2) ; the louder, the higher the cutoff
 	print iamp, icutoff, irise
 	asig butterlp asig, icutoff
-	aL, aR pan2 asig*aenv, ipan
-	outs aL, aR
+	; siin vaja mingi eq
+	;asig butterhp asig, 100
+	aout = asig*aenv* gkGamelanVolume * gkVolume
+	panning aout, ipan ; take care of rotation 
+	;aL, aR pan2 asig*aenv* gkGamelanVolume * gkVolume , ipan
+	;outs aL, aR
 endin
 
+; schedule "testSpeaker",0,3,4
+instr testSpeaker
+	aenv linen 0.1,0.1,p3,0.1
+	outch p4, poscil(aenv,1000)
+endin
+
+; schedule "testRotation",0,10,0.5
+instr testRotation
+	ispeed = p4
+	asig poscil linen(0.2,0.1,p3,0.3), 1000
+	;kazim = phasor(ispeed)*360
+	;printk 0.25, kazim
+	;a1,a2,a3,a4,a5,a6 vbap asig, kazim
+	;outh a1,a2,a3,a4,a5,a6
+	panning asig, 0
+endin
 
 </CsInstruments>
 <CsScore>
 
 </CsScore>
 </CsoundSynthesizer>
+
+
+
+
 
 
 
@@ -271,7 +340,7 @@ endin
   <g>255</g>
   <b>255</b>
  </bgcolor>
- <bsbObject version="2" type="BSBVSlider">
+ <bsbObject type="BSBVSlider" version="2">
   <objectName>b1</objectName>
   <x>9</x>
   <y>107</y>
@@ -283,13 +352,13 @@ endin
   <midicc>0</midicc>
   <minimum>-1.00000000</minimum>
   <maximum>1.00000000</maximum>
-  <value>-0.14000000</value>
+  <value>-0.08000000</value>
   <mode>lin</mode>
   <mouseControl act="jump">continuous</mouseControl>
   <resolution>-1.00000000</resolution>
   <randomizable group="0">false</randomizable>
  </bsbObject>
- <bsbObject version="2" type="BSBVSlider">
+ <bsbObject type="BSBVSlider" version="2">
   <objectName>b2</objectName>
   <x>35</x>
   <y>107</y>
@@ -301,13 +370,13 @@ endin
   <midicc>0</midicc>
   <minimum>-1.00000000</minimum>
   <maximum>1.00000000</maximum>
-  <value>0.02000000</value>
+  <value>-0.02000000</value>
   <mode>lin</mode>
   <mouseControl act="jump">continuous</mouseControl>
   <resolution>-1.00000000</resolution>
   <randomizable group="0">false</randomizable>
  </bsbObject>
- <bsbObject version="2" type="BSBVSlider">
+ <bsbObject type="BSBVSlider" version="2">
   <objectName>b3</objectName>
   <x>58</x>
   <y>107</y>
@@ -319,13 +388,13 @@ endin
   <midicc>0</midicc>
   <minimum>-1.00000000</minimum>
   <maximum>1.00000000</maximum>
-  <value>0.16000000</value>
+  <value>-0.02000000</value>
   <mode>lin</mode>
   <mouseControl act="jump">continuous</mouseControl>
   <resolution>-1.00000000</resolution>
   <randomizable group="0">false</randomizable>
  </bsbObject>
- <bsbObject version="2" type="BSBVSlider">
+ <bsbObject type="BSBVSlider" version="2">
   <objectName>b4</objectName>
   <x>84</x>
   <y>107</y>
@@ -337,13 +406,13 @@ endin
   <midicc>0</midicc>
   <minimum>-1.00000000</minimum>
   <maximum>1.00000000</maximum>
-  <value>0.22000000</value>
+  <value>-0.02000000</value>
   <mode>lin</mode>
   <mouseControl act="jump">continuous</mouseControl>
   <resolution>-1.00000000</resolution>
   <randomizable group="0">false</randomizable>
  </bsbObject>
- <bsbObject version="2" type="BSBVSlider">
+ <bsbObject type="BSBVSlider" version="2">
   <objectName>b5</objectName>
   <x>109</x>
   <y>107</y>
@@ -355,13 +424,13 @@ endin
   <midicc>0</midicc>
   <minimum>-1.00000000</minimum>
   <maximum>1.00000000</maximum>
-  <value>0.08000000</value>
+  <value>-0.06000000</value>
   <mode>lin</mode>
   <mouseControl act="jump">continuous</mouseControl>
   <resolution>-1.00000000</resolution>
   <randomizable group="0">false</randomizable>
  </bsbObject>
- <bsbObject version="2" type="BSBVSlider">
+ <bsbObject type="BSBVSlider" version="2">
   <objectName>b6</objectName>
   <x>137</x>
   <y>107</y>
@@ -373,13 +442,13 @@ endin
   <midicc>0</midicc>
   <minimum>-1.00000000</minimum>
   <maximum>1.00000000</maximum>
-  <value>0.16000000</value>
+  <value>-0.08000000</value>
   <mode>lin</mode>
   <mouseControl act="jump">continuous</mouseControl>
   <resolution>-1.00000000</resolution>
   <randomizable group="0">false</randomizable>
  </bsbObject>
- <bsbObject version="2" type="BSBScope">
+ <bsbObject type="BSBScope" version="2">
   <objectName>scope</objectName>
   <x>7</x>
   <y>281</y>
@@ -397,7 +466,7 @@ endin
   <dispy>1.00000000</dispy>
   <mode>0.00000000</mode>
  </bsbObject>
- <bsbObject version="2" type="BSBButton">
+ <bsbObject type="BSBButton" version="2">
   <objectName>button7</objectName>
   <x>8</x>
   <y>223</y>
@@ -416,7 +485,7 @@ endin
   <latch>false</latch>
   <latched>false</latched>
  </bsbObject>
- <bsbObject version="2" type="BSBController">
+ <bsbObject type="BSBController" version="2">
   <objectName>accX1</objectName>
   <x>26</x>
   <y>459</y>
@@ -442,14 +511,14 @@ endin
    <g>234</g>
    <b>0</b>
   </color>
-  <randomizable group="0" mode="both">false</randomizable>
+  <randomizable mode="both" group="0">false</randomizable>
   <bgcolor>
    <r>0</r>
    <g>0</g>
    <b>0</b>
   </bgcolor>
  </bsbObject>
- <bsbObject version="2" type="BSBButton">
+ <bsbObject type="BSBButton" version="2">
   <objectName>button9</objectName>
   <x>7</x>
   <y>10</y>
@@ -468,7 +537,7 @@ endin
   <latch>false</latch>
   <latched>true</latched>
  </bsbObject>
- <bsbObject version="2" type="BSBButton">
+ <bsbObject type="BSBButton" version="2">
   <objectName>button9</objectName>
   <x>89</x>
   <y>9</y>
@@ -487,7 +556,7 @@ endin
   <latch>false</latch>
   <latched>true</latched>
  </bsbObject>
- <bsbObject version="2" type="BSBButton">
+ <bsbObject type="BSBButton" version="2">
   <objectName>button9</objectName>
   <x>171</x>
   <y>9</y>
@@ -506,7 +575,7 @@ endin
   <latch>false</latch>
   <latched>true</latched>
  </bsbObject>
- <bsbObject version="2" type="BSBButton">
+ <bsbObject type="BSBButton" version="2">
   <objectName>button9</objectName>
   <x>253</x>
   <y>8</y>
@@ -523,9 +592,9 @@ endin
   <image>/</image>
   <eventLine>i "gamelan" 0 1 3</eventLine>
   <latch>false</latch>
-  <latched>true</latched>
+  <latched>false</latched>
  </bsbObject>
- <bsbObject version="2" type="BSBButton">
+ <bsbObject type="BSBButton" version="2">
   <objectName>button9</objectName>
   <x>7</x>
   <y>51</y>
@@ -544,7 +613,7 @@ endin
   <latch>false</latch>
   <latched>true</latched>
  </bsbObject>
- <bsbObject version="2" type="BSBButton">
+ <bsbObject type="BSBButton" version="2">
   <objectName>button9</objectName>
   <x>89</x>
   <y>50</y>
@@ -563,7 +632,7 @@ endin
   <latch>false</latch>
   <latched>true</latched>
  </bsbObject>
- <bsbObject version="2" type="BSBButton">
+ <bsbObject type="BSBButton" version="2">
   <objectName>button9</objectName>
   <x>171</x>
   <y>50</y>
@@ -582,7 +651,7 @@ endin
   <latch>false</latch>
   <latched>true</latched>
  </bsbObject>
- <bsbObject version="2" type="BSBButton">
+ <bsbObject type="BSBButton" version="2">
   <objectName>button9</objectName>
   <x>253</x>
   <y>49</y>
@@ -601,6 +670,288 @@ endin
   <latch>false</latch>
   <latched>true</latched>
  </bsbObject>
+ <bsbObject type="BSBVSlider" version="2">
+  <objectName>volume</objectName>
+  <x>195</x>
+  <y>107</y>
+  <width>20</width>
+  <height>100</height>
+  <uuid>{a077549f-984b-4c73-a68b-a6724a4eb760}</uuid>
+  <visible>true</visible>
+  <midichan>0</midichan>
+  <midicc>0</midicc>
+  <minimum>0.00000000</minimum>
+  <maximum>10.00000000</maximum>
+  <value>2.40000000</value>
+  <mode>lin</mode>
+  <mouseControl act="jump">continuous</mouseControl>
+  <resolution>-1.00000000</resolution>
+  <randomizable group="0">false</randomizable>
+ </bsbObject>
+ <bsbObject type="BSBLabel" version="2">
+  <objectName/>
+  <x>176</x>
+  <y>213</y>
+  <width>51</width>
+  <height>24</height>
+  <uuid>{897b1d7d-540f-43ae-80bd-4b89a957c7d8}</uuid>
+  <visible>true</visible>
+  <midichan>0</midichan>
+  <midicc>0</midicc>
+  <label>Master</label>
+  <alignment>left</alignment>
+  <font>Arial</font>
+  <fontsize>10</fontsize>
+  <precision>3</precision>
+  <color>
+   <r>0</r>
+   <g>0</g>
+   <b>0</b>
+  </color>
+  <bgcolor mode="nobackground">
+   <r>255</r>
+   <g>255</g>
+   <b>255</b>
+  </bgcolor>
+  <bordermode>noborder</bordermode>
+  <borderradius>1</borderradius>
+  <borderwidth>1</borderwidth>
+ </bsbObject>
+ <bsbObject type="BSBVSlider" version="2">
+  <objectName>blowvolume</objectName>
+  <x>245</x>
+  <y>106</y>
+  <width>20</width>
+  <height>100</height>
+  <uuid>{90e5ae38-4286-4c9b-a964-97ffc35aad58}</uuid>
+  <visible>true</visible>
+  <midichan>0</midichan>
+  <midicc>0</midicc>
+  <minimum>0.00000000</minimum>
+  <maximum>1.00000000</maximum>
+  <value>0.31000000</value>
+  <mode>lin</mode>
+  <mouseControl act="jump">continuous</mouseControl>
+  <resolution>-1.00000000</resolution>
+  <randomizable group="0">false</randomizable>
+ </bsbObject>
+ <bsbObject type="BSBLabel" version="2">
+  <objectName/>
+  <x>230</x>
+  <y>212</y>
+  <width>51</width>
+  <height>24</height>
+  <uuid>{5818734c-2da1-489e-82ec-e970482173a7}</uuid>
+  <visible>true</visible>
+  <midichan>0</midichan>
+  <midicc>0</midicc>
+  <label>Blower</label>
+  <alignment>left</alignment>
+  <font>Arial</font>
+  <fontsize>10</fontsize>
+  <precision>3</precision>
+  <color>
+   <r>0</r>
+   <g>0</g>
+   <b>0</b>
+  </color>
+  <bgcolor mode="nobackground">
+   <r>255</r>
+   <g>255</g>
+   <b>255</b>
+  </bgcolor>
+  <bordermode>noborder</bordermode>
+  <borderradius>1</borderradius>
+  <borderwidth>1</borderwidth>
+ </bsbObject>
+ <bsbObject type="BSBVSlider" version="2">
+  <objectName>bellvolume</objectName>
+  <x>296</x>
+  <y>105</y>
+  <width>20</width>
+  <height>100</height>
+  <uuid>{1d7ae36e-5b2d-4a9f-ae26-d24054538a39}</uuid>
+  <visible>true</visible>
+  <midichan>0</midichan>
+  <midicc>0</midicc>
+  <minimum>0.00000000</minimum>
+  <maximum>1.00000000</maximum>
+  <value>0.86000000</value>
+  <mode>lin</mode>
+  <mouseControl act="jump">continuous</mouseControl>
+  <resolution>-1.00000000</resolution>
+  <randomizable group="0">false</randomizable>
+ </bsbObject>
+ <bsbObject type="BSBLabel" version="2">
+  <objectName/>
+  <x>285</x>
+  <y>210</y>
+  <width>45</width>
+  <height>26</height>
+  <uuid>{a0d974f5-1e69-4f4e-bf2b-92f1ac34ebe6}</uuid>
+  <visible>true</visible>
+  <midichan>0</midichan>
+  <midicc>0</midicc>
+  <label>Bells</label>
+  <alignment>left</alignment>
+  <font>Arial</font>
+  <fontsize>10</fontsize>
+  <precision>3</precision>
+  <color>
+   <r>0</r>
+   <g>0</g>
+   <b>0</b>
+  </color>
+  <bgcolor mode="nobackground">
+   <r>255</r>
+   <g>255</g>
+   <b>255</b>
+  </bgcolor>
+  <bordermode>noborder</bordermode>
+  <borderradius>1</borderradius>
+  <borderwidth>1</borderwidth>
+ </bsbObject>
+ <bsbObject type="BSBVSlider" version="2">
+  <objectName>breathvolume</objectName>
+  <x>342</x>
+  <y>105</y>
+  <width>20</width>
+  <height>100</height>
+  <uuid>{4eadf820-5473-434d-9556-94258d32d5e5}</uuid>
+  <visible>true</visible>
+  <midichan>0</midichan>
+  <midicc>0</midicc>
+  <minimum>0.00000000</minimum>
+  <maximum>1.00000000</maximum>
+  <value>0.39000000</value>
+  <mode>lin</mode>
+  <mouseControl act="jump">continuous</mouseControl>
+  <resolution>-1.00000000</resolution>
+  <randomizable group="0">false</randomizable>
+ </bsbObject>
+ <bsbObject type="BSBLabel" version="2">
+  <objectName/>
+  <x>331</x>
+  <y>210</y>
+  <width>45</width>
+  <height>26</height>
+  <uuid>{b7557cc3-ed9a-4236-9b67-615118ef5104}</uuid>
+  <visible>true</visible>
+  <midichan>0</midichan>
+  <midicc>0</midicc>
+  <label>Breath</label>
+  <alignment>left</alignment>
+  <font>Arial</font>
+  <fontsize>10</fontsize>
+  <precision>3</precision>
+  <color>
+   <r>0</r>
+   <g>0</g>
+   <b>0</b>
+  </color>
+  <bgcolor mode="nobackground">
+   <r>255</r>
+   <g>255</g>
+   <b>255</b>
+  </bgcolor>
+  <bordermode>noborder</bordermode>
+  <borderradius>1</borderradius>
+  <borderwidth>1</borderwidth>
+ </bsbObject>
+ <bsbObject type="BSBVSlider" version="2">
+  <objectName>gamelanvolume</objectName>
+  <x>391</x>
+  <y>105</y>
+  <width>20</width>
+  <height>100</height>
+  <uuid>{5b2cd309-993d-4d8b-8336-3ffc238d96b8}</uuid>
+  <visible>true</visible>
+  <midichan>0</midichan>
+  <midicc>0</midicc>
+  <minimum>0.00000000</minimum>
+  <maximum>1.00000000</maximum>
+  <value>1.00000000</value>
+  <mode>lin</mode>
+  <mouseControl act="jump">continuous</mouseControl>
+  <resolution>-1.00000000</resolution>
+  <randomizable group="0">false</randomizable>
+ </bsbObject>
+ <bsbObject type="BSBLabel" version="2">
+  <objectName/>
+  <x>380</x>
+  <y>210</y>
+  <width>45</width>
+  <height>26</height>
+  <uuid>{3483647d-c2b0-40fe-84e1-d6d673f29da6}</uuid>
+  <visible>true</visible>
+  <midichan>0</midichan>
+  <midicc>0</midicc>
+  <label>Gamelan</label>
+  <alignment>left</alignment>
+  <font>Arial</font>
+  <fontsize>10</fontsize>
+  <precision>3</precision>
+  <color>
+   <r>0</r>
+   <g>0</g>
+   <b>0</b>
+  </color>
+  <bgcolor mode="nobackground">
+   <r>255</r>
+   <g>255</g>
+   <b>255</b>
+  </bgcolor>
+  <bordermode>noborder</bordermode>
+  <borderradius>1</borderradius>
+  <borderwidth>1</borderwidth>
+ </bsbObject>
+ <bsbObject type="BSBHSlider" version="2">
+  <objectName>rotationspeed</objectName>
+  <x>234</x>
+  <y>469</y>
+  <width>124</width>
+  <height>32</height>
+  <uuid>{5623a977-a003-49d0-b7b7-21115274ef8a}</uuid>
+  <visible>true</visible>
+  <midichan>0</midichan>
+  <midicc>0</midicc>
+  <minimum>0.00000000</minimum>
+  <maximum>1.00000000</maximum>
+  <value>0.21774194</value>
+  <mode>lin</mode>
+  <mouseControl act="jump">continuous</mouseControl>
+  <resolution>-1.00000000</resolution>
+  <randomizable group="0">false</randomizable>
+ </bsbObject>
+ <bsbObject type="BSBLabel" version="2">
+  <objectName/>
+  <x>149</x>
+  <y>474</y>
+  <width>80</width>
+  <height>25</height>
+  <uuid>{86f1b4b6-f673-4452-a28d-c4a1df778d85}</uuid>
+  <visible>true</visible>
+  <midichan>0</midichan>
+  <midicc>0</midicc>
+  <label>Rotationspeed</label>
+  <alignment>left</alignment>
+  <font>Arial</font>
+  <fontsize>10</fontsize>
+  <precision>3</precision>
+  <color>
+   <r>0</r>
+   <g>0</g>
+   <b>0</b>
+  </color>
+  <bgcolor mode="nobackground">
+   <r>255</r>
+   <g>255</g>
+   <b>255</b>
+  </bgcolor>
+  <bordermode>noborder</bordermode>
+  <borderradius>1</borderradius>
+  <borderwidth>1</borderwidth>
+ </bsbObject>
 </bsbPanel>
 <bsbPresets>
 <preset name="mute" number="0" >
@@ -612,7 +963,7 @@ endin
 <value id="{5ae6c887-beac-40d3-967d-1d06dc92b231}" mode="1" >-0.06000000</value>
 </preset>
 </bsbPresets>
-<EventPanel name="blower" tempo="60.00000000" loop="8.00000000" x="1261" y="597" width="655" height="346" visible="false" loopStart="0" loopEnd="0">i "blower" 0 1 1 0 
+<EventPanel name="blower" tempo="60.00000000" loop="8.00000000" x="1261" y="597" width="655" height="346" visible="true" loopStart="0" loopEnd="0">i "blower" 0 1 1 0 
 i "blower" 0 1 2 0 
     
 i "blower" 0 1 3 1 
@@ -620,7 +971,7 @@ i "blower" 0 1 4 0
 1    
 i "blower" 0 1 5 0 
 i "blower" 0 1 6 0 </EventPanel>
-<EventPanel name="testBreath" tempo="60.00000000" loop="8.00000000" x="133" y="398" width="655" height="346" visible="false" loopStart="0" loopEnd="0">;   ;.   ;.   ;.   ;player   ;ystart   ;yend   ;speed   ;xstart   ;xend 
+<EventPanel name="testBreath" tempo="60.00000000" loop="8.00000000" x="133" y="398" width="655" height="346" visible="false" loopStart="0" loopEnd="0">;     ;.     ;.     ;.     ;player     ;ystart     ;yend     ;speed     ;xstart     ;xend 
 i "testBreath" 0 4 1 0 0.9 0.5 0.3 1 
 i "testBreath" 0 2 1 0.9 0.1 0.2 0 1 
 i "testBreath" 0 2 1 0 0.5 1 0.5 0.8 

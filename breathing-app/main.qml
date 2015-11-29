@@ -16,24 +16,10 @@ ApplicationWindow {
     property real breathSpeed: 0; // for finding breathColumn length; increases when phone moving up; decreases, when down
     property real speedThreshold: 0.03
 
-//    menuBar: MenuBar {
-//        Menu {
-//            title: qsTr("&File")
-//            MenuItem {
-//                text: qsTr("&Open")
-//                onTriggered: messageDialog.show(qsTr("Open action triggered"));
-//            }
-//            MenuItem {
-//                text: qsTr("E&xit")
-//                onTriggered: Qt.quit();
-//            }
-//        }
-//    }
-
 
     WebSocket {
         id: socket
-        url: "ws://localhost:33033/ws"
+        url: "ws://192.168.1.199:33033/ws"
         onTextMessageReceived: {
            console.log("Received message: ",message);
         }
@@ -50,16 +36,6 @@ ApplicationWindow {
                          }
         active: false
     }
-
-//    onAccXChanged: {
-//        if (socket.status==WebSocket.Open && Math.abs(breathSpeed)>speedThreshold)
-//            socket.sendTextMessage("accX," + accX)
-//    }
-
-//    onAccYChanged: {
-//        if (socket.status==WebSocket.Open && Math.abs(breathSpeed)>speedThreshold)
-//            socket.sendTextMessage("accY," + accX)
-//    }
 
     Component.onCompleted: {
         socket.active = true;
@@ -155,7 +131,7 @@ ApplicationWindow {
                 id: serverAddress
                 visible: !socket.active
                 width: mainRect.width - serverLabel.width - connectButton.width - 20;
-                text: "ws://192.168.1.220:33033/ws"
+                text: "ws://192.168.1.199:33033/ws"
             }
 
             Button {

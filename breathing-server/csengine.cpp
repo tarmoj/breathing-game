@@ -2,6 +2,7 @@
 #include <QDebug>
 #include <QCoreApplication>
 
+
 CsEngine::CsEngine(QObject *parent) : QObject(parent)
 {
 	csd = "../breathing-game.csd";
@@ -10,8 +11,10 @@ CsEngine::CsEngine(QObject *parent) : QObject(parent)
 
 CsEngine::~CsEngine()
 {
+	stop(); // this is mess
+	//some kind of waitfor...
 	cs->Stop();
-	delete cs;
+	//delete cs;
 }
 
 

@@ -20,7 +20,6 @@ public:
 public slots:
 	void setClientsCount(int clientsCount);
 	void on_volumeSlider_valueChanged(int value);
-	void testChannelValue(QString channel, double value);
 
 signals:
 	void newChannelValue(QString channel, double value);
@@ -29,6 +28,16 @@ signals:
 
 private slots:
 	void on_bellsButton_clicked();
+
+	void on_blowerSlider_valueChanged(int value);
+
+	void on_breathSlider_valueChanged(int value);
+
+	void on_bellSlider_valueChanged(int value);
+
+	void on_gamelanSlider_valueChanged(int value);
+
+	void on_horizontalSlider_valueChanged(int value);
 
 private:
 	Ui::BreathWindow *ui;

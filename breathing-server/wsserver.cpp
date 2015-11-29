@@ -108,6 +108,11 @@ void WsServer::processTextMessage(QString message) // message must be an array o
 
 	}
 
+	if (messageParts[0].startsWith("blower")) { // blower, <number>, <pressure> -1..1
+			emit newChannelValue("b"+messageParts[1],messageParts[2].toDouble());
+
+	}
+
 
 }
 
