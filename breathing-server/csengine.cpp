@@ -12,9 +12,6 @@ CsEngine::CsEngine(QObject *parent) : QObject(parent)
 CsEngine::~CsEngine()
 {
 	stop(); // this is mess
-	//some kind of waitfor...
-	cs->Stop();
-	//delete cs;
 }
 
 
@@ -25,8 +22,8 @@ void CsEngine::play() {
 		QCoreApplication::processEvents(); // probably bad solution but works. otherwise other slots will never be calles
 	}
 	qDebug()<<"Stopping csound";
-	cs->Cleanup(); // is it necessary?
-	cs->Reset();
+	cs->Stop();
+	delete cs;
 	stopNow = false;
 
 }

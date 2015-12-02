@@ -12,15 +12,18 @@ BreathWindow::BreathWindow(QWidget *parent) :
 	connect(wsServer, SIGNAL(newConnection(int)), this, SLOT(setClientsCount(int)));
 
 	// move csound into another thread
-	QThread *thread = new QThread(this);
+	csoundThread = new QThread(this);
 	cs = new CsEngine();
-	cs->moveToThread(thread);
+	cs->moveToThread(csoundThread);
 
 
-	connect(thread, &QThread::finished, cs, &CsEngine::deleteLater);
-	connect(thread, &QThread::finished, thread, &QThread::deleteLater); // somehow exiting from Csound is not clear yet, the thread gets destoyed when Csoun is still running.
+	connect(csoundThread, &QThread::finished, cs, &CsEngine::deleteLater);
+	connect(csoundThread, &QThread::finished, csoundThread, &QThread::deleteLater); // somehow exiting from Csound is not clear yet, the thread gets destoyed when Csoun is still running.
+
+	// kuskile funtsioonid startCsound, stopCsoundm thread private
+	// stopCsound -> connecct widget destoyed ja kuskil cs->stop(), csoundThread.quit(), csoundThread.wait()
 	connect(this, &QWidget::destroyed, cs, &CsEngine::stop);
-	connect(thread, &QThread::started, cs, &CsEngine::play);
+	connect(csoundThread, &QThread::started, cs, &CsEngine::play);
 
 	connect(this, &BreathWindow::newChannelValue, cs, &CsEngine::setChannel );
 	connect(this, &BreathWindow::newScoreEvent, cs, &CsEngine::scoreEvent );
@@ -29,7 +32,7 @@ BreathWindow::BreathWindow(QWidget *parent) :
 	connect(wsServer, &WsServer::newScoreEvent, cs, &CsEngine::scoreEvent );
 
 
-	thread->start();
+	csoundThread->start();
 
 	emit newChannelValue("volume", (double) ui->volumeSlider->value()/100.0);
 	emit newChannelValue("blowvolume", (double) ui->blowerSlider->value()/100.0);
@@ -42,6 +45,9 @@ BreathWindow::BreathWindow(QWidget *parent) :
 
 BreathWindow::~BreathWindow()
 {
+	cs->stop();
+	csoundThread->quit();
+	csoundThread->wait();
 	delete ui;
 }
 

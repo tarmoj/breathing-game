@@ -43,6 +43,7 @@ private:
 	Ui::BreathWindow *ui;
 	WsServer * wsServer;
 	CsEngine * cs;
+	QThread *csoundThread;
 
 
 };
