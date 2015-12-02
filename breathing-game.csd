@@ -2,7 +2,7 @@
 <CsoundSynthesizer>
 <CsOptions>
 -odac:system:playback_ -+rtaudio=jack  -d
-;--env:SFDIR+="/home/tarmo/tarmo/csound/breathing-game/gamelan/"  ; does not work ....
+
 </CsOptions>
 <CsInstruments>
 
@@ -27,10 +27,6 @@ gkPhase init 0
 
 seed 0
 
-;; Tables
-
-giHanning ftgen 0,0,4096, 20, 2
-
 ;; Channels
 chn_k "b1",3
 chn_k "b2",3
@@ -53,26 +49,40 @@ chn_k "rotationspeed",1
 chnset 0.2, "speed1"
 chnset 0, "rotationspeed"
 
-;gSbreather[] fillarray "b1", "b2", "b3", "b4", "b5", "b6"
 gkBreath[] init 7
 
-gindex = 1 ; start readers for blowingpressure
 
 ;; instr 0
 
-opcode panning, 0,ak
+; start readers for blowingpressure
+gindex = 1 
+
+
+if (nchnls == 6) then
+	vbaplsinit 2, 6, -45, 45, 90, 135, -135, -90
+else
+	vbaplsinit 2, 2, -45, 45
+endif
+
+opcode panning, 0,ak ; rotates the sound from the original position using vbap opcode
 	asig, istartpan xin
 	istartdegree = istartpan*90-45
 	kazim init istartdegree
-	kphase phasor chnget:k("rotationspeed")
+		krotationspeed chnget "rotationspeed"
+
+	kphase phasor krotationspeed
+	idirection = (rnd(1) >= 0.5 ) ? 0 : 1
+	print idirection ; random for avery note
+	if (krotationspeed>0) then
+		if (idirection==1) then
+			kphase = 1-kphase
+		endif
+	endif
+	
 	if (nchnls==6) then
-		;if (chnget:k("rotationspeed") > 0 ) then 
-			kazim = istartdegree + kphase*360
-			kazim wrap kazim, 0, 360
-		;endif
-		
-		printk 0.25, kphase
-		printk 0.25, kazim
+		kazim = istartdegree + kphase*360
+		kazim wrap kazim, 0, 360
+		;printk 0.25, kazim
 		a1,a2,a3,a4,a5,a6 vbap asig, kazim
 		outh a1,a2,a3,a4,a5,a6
 		
@@ -90,8 +100,10 @@ loop1:
 	print gindex
 	loop_le gindex, 1, 6, loop1
 
+;; instruments
+
 alwayson "controller"
-instr controller
+instr controller ; read channels
 	gkVolume port chnget:k("volume"), 0.02
 	gkBlowerVolume port chnget:k("blowvolume"), 0.02
 	gkBellsVolume port chnget:k("bellvolume"), 0.02			
@@ -100,12 +112,6 @@ instr controller
 	;gkPhase phasor chnget:k("rotationspeed")
 endin
 
-if (nchnls == 6) then
-	prints "KUUS"
-	vbaplsinit 2, 6, -45, 45, 90, 135, -135, -90
-else
-	vbaplsinit 2, 2, -45, 45
-endif
 	
 instr blowReader
 	iblower = p4 ; 1,2,..6
@@ -114,11 +120,11 @@ instr blowReader
 	gkBreath[iblower] port kbreath, 0.05
 	giThreshold = 0.25
 	if (trigger(abs(gkBreath[iblower]),giThreshold,0)==1) then ; pressure bigger than limit
-		printk2 gkBreath[iblower]
+		;printk2 gkBreath[iblower]
 		event "i", nstrnum("blower")+iblower/10, 0, -1, iblower, (gkBreath[iblower]>0) ? 1 : 0 
 	endif
 	if (trigger(abs(gkBreath[iblower]),giThreshold,1)==1) then ; pressure lower than limit
-		printk2 gkBreath[iblower]
+		;printk2 gkBreath[iblower]
 		turnoff2 nstrnum("blower")+iblower/10, 4,1 
 	endif
 		
@@ -128,23 +134,30 @@ endin
 instr blower,10
 	inumber = p4 ; 3 pairs, first pair 1,2, second 3, 4 etc one pair has close
 	inOut = p5 ; 0 - in 1 - out
-	; TODO: kui puhub kõvemini, siis mine järgmise osaheli peale (paarituarvulised?)
+
 	ifreq = giBaseFreq * (1+ceil(inumber/2)) ; should be as 2. 3. and 4. harmonic from giBaseFreq
 	
 	if (inOut == $IN) then 
 		ifreq = ( inumber%2==1 ) ? ifreq - 8 : ifreq +8 ; if exhaling, use lower pitch for odd number player and higher pitch for even nubmer player 
 	endif
-	print ifreq
+	;print ifreq
 	iamp = 0.1 ; TODO: amp puhumistugevusest
 	kamp = iamp* abs(gkBreath[inumber])
-	kamp port kamp, 0.2
+	kamp port kamp, 1
 	aenv linenr kamp, 0.25,1, 0.001
+	;kfreq init ifreq
+	
+		 	
 	asig poscil 1, ifreq
-	kh2 = kamp *3  * (1+ jspline:k(0.5,0.5,2)) ; add some variation to specter
+	kh1 = 1 - abs(gkBreath[inumber])/2 ; basetone less when harder blowing (as if going to second harmonic)
+	kh2 = kamp *3.5  ;* (1+ jspline:k(0.5,0.5,2)) ; add some variation to specter
 	;printk2 kh2  
-	kh3 = kamp-giThreshold*2.5 * (1+ jspline:k(0.25,0.5,2))
-	kh4 = kamp-giThreshold*2 * (1+ jspline:k(0.2,0.5,2))
-	asig chebyshevpoly asig, 0, 1, kh2, kh3, kh4
+	kh3 = kamp-giThreshold*3 ;* (1+ jspline:k(0.25,0.5,2))
+	kh4 = kamp-giThreshold*2.5 ;* (1+ jspline:k(0.2,0.5,2))
+	
+
+		
+	asig chebyshevpoly asig, 0, kh1, kh2, kh3, kh4, kh4/2
 	;anoise butterbp pinkish(2),ifreq*4, ifreq/2
 	;anoise butterlp pinkish(1),ifreq*4
 	aout = asig* aenv * gkBlowerVolume * gkVolume
@@ -211,9 +224,6 @@ instr testBreath
 endin
 
 
-; schedule 30.1, 0, 20, 1, 1
-; schedule 30.1, 0,2, 1, -1
-
 
 ;schedule 30.1, 0, -1, 1, 1, 
 ;schedule 30.1, 0, -1, 1, -1
@@ -246,20 +256,15 @@ instr breathing, 30
 	kband = iband - iband*ky*0.9 ; if inhaling, band narrower
 	;printk2 kband
 	
-	
-	
 	ky limit ky,0, 1; for any case
-	;kamp  = 0.1 + tab:k(ky,giHanning,1)/2  -pole päris hea
 	ispeedThreshold = 0.03 ; when a note on/off is sent
 	kamp = (abs(kspeed))*1.5 ;sqrt(abs(kspeed)-ispeedThreshold)/2 ; kspeed min always 0.05  alguls + 0.01
 	kamp limit kamp,0, 0.5
+	kamp port kamp, 0.2
 	;printk2 kamp
 	
 	asine poscil 0.5, random:i(8,16)*giBaseFreq 	 ; sine tone
-	aenv linenr kamp, 0.6, 1,0.001	
-
-
-	
+	aenv linenr kamp, 0.6, 1,0.001		
 
 	iamp = 4 ; amp sõltuvusse kiirendusest
 	asig butterbp pinkish(iamp),kfreq, kband
@@ -279,12 +284,12 @@ instr gamelan
 	ifiledur filelen Sfile
 	p3 = (ifiledur > 4) ? 4 : ifiledur ; limit to 4 seconds
 	p3 *= 1+ birnd(0.2) ; randomly differ the length
-	iamp random 0.4, 0.6
+	iamp random 0.5, 0.6
 	irise random 0.05,0.3
 	aenv linen iamp,irise,p3,p3/2
 	icutoff = 2000*(1+isound/10) * (1+iamp*2) ; the louder, the higher the cutoff
 	print iamp, icutoff, irise
-	asig butterlp asig, icutoff
+	;asig butterlp asig, icutoff
 	; siin vaja mingi eq
 	;asig butterhp asig, 100
 	aout = asig*aenv* gkGamelanVolume * gkVolume
@@ -299,10 +304,10 @@ instr testSpeaker
 	outch p4, poscil(aenv,1000)
 endin
 
-; schedule "testRotation",0,10,0.5
+; schedule "testRotation",0,30,0.5
 instr testRotation
-	ispeed = p4
-	asig poscil linen(0.2,0.1,p3,0.3), 1000
+	ispeed = p4 
+	asig vco2 0.1, 1000, 0
 	;kazim = phasor(ispeed)*360
 	;printk 0.25, kazim
 	;a1,a2,a3,a4,a5,a6 vbap asig, kazim
@@ -326,12 +331,16 @@ endin
 
 
 
+
+
+
+
 <bsbPanel>
  <label>Widgets</label>
  <objectName/>
  <x>0</x>
  <y>0</y>
- <width>357</width>
+ <width>425</width>
  <height>565</height>
  <visible>true</visible>
  <uuid/>
@@ -352,7 +361,7 @@ endin
   <midicc>0</midicc>
   <minimum>-1.00000000</minimum>
   <maximum>1.00000000</maximum>
-  <value>-0.08000000</value>
+  <value>0.04000000</value>
   <mode>lin</mode>
   <mouseControl act="jump">continuous</mouseControl>
   <resolution>-1.00000000</resolution>
@@ -370,7 +379,7 @@ endin
   <midicc>0</midicc>
   <minimum>-1.00000000</minimum>
   <maximum>1.00000000</maximum>
-  <value>-0.02000000</value>
+  <value>-0.04000000</value>
   <mode>lin</mode>
   <mouseControl act="jump">continuous</mouseControl>
   <resolution>-1.00000000</resolution>
@@ -424,7 +433,7 @@ endin
   <midicc>0</midicc>
   <minimum>-1.00000000</minimum>
   <maximum>1.00000000</maximum>
-  <value>-0.06000000</value>
+  <value>0.02000000</value>
   <mode>lin</mode>
   <mouseControl act="jump">continuous</mouseControl>
   <resolution>-1.00000000</resolution>
@@ -442,7 +451,7 @@ endin
   <midicc>0</midicc>
   <minimum>-1.00000000</minimum>
   <maximum>1.00000000</maximum>
-  <value>-0.08000000</value>
+  <value>0.04000000</value>
   <mode>lin</mode>
   <mouseControl act="jump">continuous</mouseControl>
   <resolution>-1.00000000</resolution>
@@ -511,7 +520,7 @@ endin
    <g>234</g>
    <b>0</b>
   </color>
-  <randomizable mode="both" group="0">false</randomizable>
+  <randomizable group="0" mode="both">false</randomizable>
   <bgcolor>
    <r>0</r>
    <g>0</g>
@@ -535,7 +544,7 @@ endin
   <image>/</image>
   <eventLine>i "gamelan" 0 1 0</eventLine>
   <latch>false</latch>
-  <latched>true</latched>
+  <latched>false</latched>
  </bsbObject>
  <bsbObject type="BSBButton" version="2">
   <objectName>button9</objectName>
@@ -554,7 +563,7 @@ endin
   <image>/</image>
   <eventLine>i "gamelan" 0 1 1</eventLine>
   <latch>false</latch>
-  <latched>true</latched>
+  <latched>false</latched>
  </bsbObject>
  <bsbObject type="BSBButton" version="2">
   <objectName>button9</objectName>
@@ -573,7 +582,7 @@ endin
   <image>/</image>
   <eventLine>i "gamelan" 0 1 2</eventLine>
   <latch>false</latch>
-  <latched>true</latched>
+  <latched>false</latched>
  </bsbObject>
  <bsbObject type="BSBButton" version="2">
   <objectName>button9</objectName>
@@ -611,7 +620,7 @@ endin
   <image>/</image>
   <eventLine>i "gamelan" 0 1 10</eventLine>
   <latch>false</latch>
-  <latched>true</latched>
+  <latched>false</latched>
  </bsbObject>
  <bsbObject type="BSBButton" version="2">
   <objectName>button9</objectName>
@@ -630,7 +639,7 @@ endin
   <image>/</image>
   <eventLine>i "gamelan" 0 1 11</eventLine>
   <latch>false</latch>
-  <latched>true</latched>
+  <latched>false</latched>
  </bsbObject>
  <bsbObject type="BSBButton" version="2">
   <objectName>button9</objectName>
@@ -649,7 +658,7 @@ endin
   <image>/</image>
   <eventLine>i "gamelan" 0 1 12</eventLine>
   <latch>false</latch>
-  <latched>true</latched>
+  <latched>false</latched>
  </bsbObject>
  <bsbObject type="BSBButton" version="2">
   <objectName>button9</objectName>
@@ -668,7 +677,7 @@ endin
   <image>/</image>
   <eventLine>i "gamelan" 0 1 13</eventLine>
   <latch>false</latch>
-  <latched>true</latched>
+  <latched>false</latched>
  </bsbObject>
  <bsbObject type="BSBVSlider" version="2">
   <objectName>volume</objectName>
@@ -971,7 +980,7 @@ i "blower" 0 1 4 0
 1    
 i "blower" 0 1 5 0 
 i "blower" 0 1 6 0 </EventPanel>
-<EventPanel name="testBreath" tempo="60.00000000" loop="8.00000000" x="133" y="398" width="655" height="346" visible="false" loopStart="0" loopEnd="0">;     ;.     ;.     ;.     ;player     ;ystart     ;yend     ;speed     ;xstart     ;xend 
+<EventPanel name="testBreath" tempo="60.00000000" loop="8.00000000" x="133" y="398" width="655" height="346" visible="false" loopStart="0" loopEnd="0">;       ;.       ;.       ;.       ;player       ;ystart       ;yend       ;speed       ;xstart       ;xend 
 i "testBreath" 0 4 1 0 0.9 0.5 0.3 1 
 i "testBreath" 0 2 1 0.9 0.1 0.2 0 1 
 i "testBreath" 0 2 1 0 0.5 1 0.5 0.8 

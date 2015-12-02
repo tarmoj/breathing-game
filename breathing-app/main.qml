@@ -14,7 +14,7 @@ ApplicationWindow {
     property real accY: 0 // longer axis on phone, portrait layout
     property real accX:0 // shorter side
     property real breathSpeed: 0; // for finding breathColumn length; increases when phone moving up; decreases, when down
-    property real speedThreshold: 0.03
+    property real speedThreshold: 0.015
 
 
     WebSocket {
@@ -52,12 +52,13 @@ ApplicationWindow {
 
         onTriggered:  {
             breathSpeed = (accel.reading.y-oldY) * (interval/1000)
+            breathSpeed = (breathSpeed+oldSpeed)/2 // to level a bit sudden wobblings
             oldY = accel.reading.y;
 
             if (socket.status==WebSocket.Open && mainArea.containsPress) {
-                if (oldSpeed<speedThreshold && Math.abs(breathSpeed)>=speedThreshold ) {
+                if (Math.abs(oldSpeed)<speedThreshold && Math.abs(breathSpeed)>=speedThreshold ) {
                     socket.sendTextMessage("breathStart," + panSlider.value) }
-                if (oldSpeed>=speedThreshold && Math.abs(breathSpeed)<speedThreshold )
+                if (Math.abs(oldSpeed)>=speedThreshold && Math.abs(breathSpeed)<speedThreshold )
                     socket.sendTextMessage("breathEnd")
                 if (Math.abs(breathSpeed) > speedThreshold) { // send phone position info while moving
                     socket.sendTextMessage("accX," + accX/10.0 +  ",accY," + accY/10.0 + ",speed,"+breathSpeed) // send everythin as one message
@@ -67,7 +68,7 @@ ApplicationWindow {
 
 
             }
-            oldSpeed = Math.abs(breathSpeed);
+            oldSpeed = breathSpeed;
 
 
         }
@@ -114,12 +115,15 @@ ApplicationWindow {
                     socket.sendTextMessage("breathEnd")
             }
 
+            onPressed: accelerationTimer.oldSpeed = 0; // to trigger breathStart
+
         }
 
         Row {
             x:5; y:5
             id: serverRow
             spacing: 5
+            z:3
 
             Label {
                 visible: !socket.active;

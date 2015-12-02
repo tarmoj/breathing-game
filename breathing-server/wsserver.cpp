@@ -2,7 +2,6 @@
 #include "QtWebSockets/qwebsocketserver.h"
 #include "QtWebSockets/qwebsocket.h"
 #include <QtCore/QDebug>
-#include <QDir>
 
 
 
@@ -65,7 +64,7 @@ void WsServer::processTextMessage(QString message) // message must be an array o
 	}
 	int player = peerAdresses.indexOf(senderAddress) + 1;
 
-	qDebug()<<"Message received: "<<message;
+	//qDebug()<<"Message received: "<<message;
 	QStringList messageParts = message.split(",");
 	if (messageParts[0].startsWith("breathStart")) { // comes in as breath, <pan>
 
@@ -117,9 +116,6 @@ void WsServer::processTextMessage(QString message) // message must be an array o
 }
 
 
-// Sea Cs Class Ws alt, window: wsSwever->setVolume
-
-
 
 void WsServer::socketDisconnected()
 {
@@ -141,9 +137,4 @@ void WsServer::sendMessage(QWebSocket *socket, QString message )
     socket->sendTextMessage(message);
 
 }
-
-//void WsServer::setVolume(double volume)
-//{
-//	cs->setChannel("volume",(MYFLT)volume);
-//}
 
